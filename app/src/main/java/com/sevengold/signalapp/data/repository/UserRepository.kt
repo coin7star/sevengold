@@ -100,4 +100,32 @@ class UserRepository(
             newExpiry
         }.await()
     }
+    fun observeMySubscriptionOrders(uid: String): Flow<List<com.sevengold.signalapp.data.model.SubscriptionOrder>> = callbackFlow {
+        val registration = db.collection("subscriptionOrders")
+            .whereEqualTo("uid", uid)
+            .limit(20)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { close(error); return@addSnapshotListener }
+                val orders = snapshot?.documents?.map { com.sevengold.signalapp.data.model.SubscriptionOrder.fromMap(it.id, it.data) }?.sortedByDescending { it.createdAt } ?: emptyList()
+                trySend(orders)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun createSubscriptionOrder(uid: String, email: String, pkg: com.sevengold.signalapp.data.model.SubscriptionPackage): Result<String> = runCatching {
+        val ref = db.collection("subscriptionOrders").document()
+        val now = System.currentTimeMillis()
+        ref.set(mapOf(
+            "uid" to uid,
+            "email" to email,
+            "packageId" to pkg.id,
+            "packageName" to pkg.name,
+            "price" to pkg.price,
+            "durationDays" to pkg.durationDays,
+            "status" to "PENDING",
+            "createdAt" to now
+        )).await()
+        ref.id
+    }
+
 }

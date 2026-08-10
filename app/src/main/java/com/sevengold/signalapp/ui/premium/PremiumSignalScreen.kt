@@ -28,6 +28,9 @@ import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.common.SubscriptionBanner
+import com.sevengold.signalapp.ui.common.SubscriptionPurchaseSheet
+import com.sevengold.signalapp.ui.common.SubscriptionViewModel
 import com.sevengold.signalapp.ui.theme.EmeraldAccent
 import com.sevengold.signalapp.ui.theme.GoldLight
 import com.sevengold.signalapp.ui.theme.GoldPrimary
@@ -42,10 +45,16 @@ fun PremiumSignalScreen(
     user: AppUser,
     expiryLabel: String,
     onLogout: () -> Unit,
-    vm: SignalListViewModel = viewModel()
+    vm: SignalListViewModel = viewModel(),
+    subscriptionVm: SubscriptionViewModel = viewModel()
 ) {
     val signals by vm.signals.collectAsState()
+    val packages by subscriptionVm.packages.collectAsState()
+    val orders by subscriptionVm.orders.collectAsState()
+    val subscriptionMessage by subscriptionVm.message.collectAsState()
     var tab by remember { mutableStateOf(PremiumTab.SIGNALS) }
+    var showPackagesSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(user.uid) { subscriptionVm.startListeningOrders(user.uid) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -96,11 +105,34 @@ fun PremiumSignalScreen(
                     contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
                 ) {
                     item { PremiumExpiryBanner(expiryLabel) }
+                    item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
+                    if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
                     item { PerformanceSummaryCard(signals = signals) }
                     items(signals) { signal -> SignalCard(signal) }
                 }
                 PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
             }
+        }
+    }
+
+    if (showPackagesSheet) {
+        SubscriptionPurchaseSheet(
+            user = user,
+            packages = packages,
+            orders = orders,
+            message = subscriptionMessage,
+            onBuy = { pkg -> subscriptionVm.createOrder(user.uid, user.email, pkg) },
+            onDismiss = { showPackagesSheet = false }
+        )
+    }
+}
+
+@Composable
+private fun PendingRenewalBanner() {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Column(Modifier.padding(12.dp)) {
+            Text("⏳ Perpanjangan menunggu approval", fontWeight = FontWeight.Bold)
+            Text("Durasi Premium akan ditambahkan setelah admin menyetujui pembayaran.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

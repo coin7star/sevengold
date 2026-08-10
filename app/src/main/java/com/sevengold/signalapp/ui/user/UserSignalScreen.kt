@@ -28,6 +28,9 @@ import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.common.SubscriptionBanner
+import com.sevengold.signalapp.ui.common.SubscriptionPurchaseSheet
+import com.sevengold.signalapp.ui.common.SubscriptionViewModel
 import com.sevengold.signalapp.ui.theme.GoldLight
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 import com.sevengold.signalapp.ui.theme.SignalGradients
@@ -45,13 +48,20 @@ fun UserSignalScreen(
     user: AppUser,
     onLogout: () -> Unit,
     signalVm: SignalListViewModel = viewModel(),
-    redeemVm: RedeemViewModel = viewModel()
+    redeemVm: RedeemViewModel = viewModel(),
+    subscriptionVm: SubscriptionViewModel = viewModel()
 ) {
     val signals by signalVm.signals.collectAsState()
     val redeemState by redeemVm.state.collectAsState()
+    val packages by subscriptionVm.packages.collectAsState()
+    val orders by subscriptionVm.orders.collectAsState()
+    val subscriptionMessage by subscriptionVm.message.collectAsState()
     var code by remember { mutableStateOf("") }
     var showRedeemSheet by remember { mutableStateOf(false) }
+    var showPackagesSheet by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf(UserTab.SIGNALS) }
+
+    LaunchedEffect(uid) { subscriptionVm.startListeningOrders(uid) }
 
     LaunchedEffect(redeemState.success) {
         if (redeemState.success) {
@@ -110,12 +120,25 @@ fun UserSignalScreen(
                     contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
                 ) {
                     item { PerformanceSummaryCard(signals = signals) }
+                    item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }) }
+                    item { if (orders.any { it.status.name == "PENDING" }) PendingOrderBanner() }
                     item { UpsellCard(onUpgrade = { showRedeemSheet = true }) }
                     items(signals) { signal -> LockedSignalCard(signal) }
                 }
                 UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
             }
         }
+    }
+
+    if (showPackagesSheet) {
+        SubscriptionPurchaseSheet(
+            user = user,
+            packages = packages,
+            orders = orders,
+            message = subscriptionMessage,
+            onBuy = { pkg -> subscriptionVm.createOrder(uid, user.email, pkg) },
+            onDismiss = { showPackagesSheet = false }
+        )
     }
 
     if (showRedeemSheet) {
@@ -148,6 +171,16 @@ fun UserSignalScreen(
 }
 
 @Composable
+private fun PendingOrderBanner() {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        Column(Modifier.padding(14.dp)) {
+            Text("⏳ Pesanan Premium menunggu approval", fontWeight = FontWeight.Bold)
+            Text("Setelah pembayaran dikonfirmasi admin, akun akan otomatis menjadi PREMIUM.", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 private fun UpsellCard(onUpgrade: () -> Unit) {
     Column(
         modifier = Modifier
@@ -169,7 +202,7 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "Redeem kode dari admin untuk membuka semua sinyal secara penuh — Entry, TP, dan SL.",
+            "Pilih paket Premium di atas untuk mulai berlangganan. Kode lama dari admin tetap bisa dipakai sebagai opsi cadangan.",
             color = Color(0xFF3A2E10),
             style = MaterialTheme.typography.bodySmall
         )
@@ -180,7 +213,7 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
                 .background(Color(0xFF241A02))
         ) {
             TextButton(onClick = onUpgrade) {
-                Text("Masukkan Kode Langganan", color = GoldLight, fontWeight = FontWeight.Bold)
+                Text("Punya kode lama? Masukkan kode", color = GoldLight, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -232,3 +232,80 @@ Kalau nanti mau lanjut ke tahap Cloud Functions atau login Google, tinggal bilan
 - Fixed `PERMISSION_DENIED` on login caused by `ensureReferralData()` attempting to overwrite an existing `referralCodes/{code}` document.
 - Existing referral code documents are now read and preserved; a new document is only created when missing.
 - Firestore rules also verify that a referral code can only be created/updated by its owner and its UID cannot be changed.
+
+## Paket Langganan + Approval Manual (MVP)
+
+Sistem langganan sekarang memakai paket resmi dan approval admin manual. Paket default:
+
+| Paket | Harga | Durasi |
+|---|---:|---:|
+| Starter | Rp10.000 | 7 hari |
+| Basic | Rp15.000 | 10 hari |
+| Pro | Rp30.000 | 20 hari |
+| VIP | Rp50.000 | 30 hari |
+
+### Alur USER
+
+```text
+USER / PREMIUM
+  ↓
+Lihat banner Paket Premium
+  ↓
+Pilih paket
+  ↓
+Buat Pesanan (PENDING)
+  ↓
+Lakukan pembayaran manual sesuai instruksi admin
+  ↓
+Admin cek pembayaran
+  ↓
+APPROVE
+  ↓
+Cloud Function
+  ↓
+USER → PREMIUM + durasi paket
+PREMIUM → expiry lama + durasi paket
+```
+
+- User hanya boleh membuat dan melihat pesanan miliknya sendiri.
+- PREMIUM bisa membeli paket lagi untuk **menambah durasi**, bukan mereset expiry.
+- USER yang disetujui otomatis menjadi PREMIUM.
+- Admin melihat jumlah pesanan pending langsung di tab **Pesanan**.
+- Admin bisa **Approve** atau **Tolak**.
+- Saat approve, perubahan role/expiry dilakukan Cloud Function server-side, bukan oleh Android client.
+- Voucher referral tetap ada dan **belum dipotong otomatis dari harga paket**; untuk sementara admin memproses voucher secara manual.
+
+### Firestore tambahan
+
+```text
+subscriptionOrders/{orderId}
+  uid: string
+  email: string
+  packageId: string
+  packageName: string
+  price: number
+  durationDays: number
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  createdAt: number
+  approvedAt: number | null
+  rejectedAt: number | null
+  approvalProcessedAt: number | null
+  processedExpiryMillis: number | null
+  adminNote: string
+
+appSettings/subscriptionPackages
+  packages: [
+    { id, name, price, durationDays, label, enabled, sortOrder }
+  ]
+```
+
+### Deploy Cloud Functions setelah fitur ini ditambahkan
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+`onSubscriptionOrderUpdated` wajib ter-deploy agar tombol **Approve** benar-benar mengaktifkan Premium secara server-side.

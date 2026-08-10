@@ -50,6 +50,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Pesanan paket Premium. User hanya boleh membuat & membaca pesanan miliknya sendiri.
+    // Status APPROVED/REJECTED hanya boleh diubah ADMIN; pemberian Premium dilakukan Cloud Function.
+    match /subscriptionOrders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || role() == 'ADMIN');
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'PENDING';
+      allow update: if isSignedIn() && role() == 'ADMIN';
+      allow delete: if false;
+    }
+
+    // Konfigurasi paket. Client boleh membaca paket aktif; hanya ADMIN yang boleh mengubah.
+    match /appSettings/subscriptionPackages {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && role() == 'ADMIN';
+    }
+
     // Pengaturan referral: semua user login boleh membaca konfigurasi agar proses
     // registrasi bisa memakai nilai terbaru; hanya ADMIN yang boleh mengubah.
     match /appSettings/{settingId} {

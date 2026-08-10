@@ -31,7 +31,7 @@ import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
+    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), SUBSCRIPTIONS("Pesanan"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
 }
 
 @Composable
@@ -41,6 +41,8 @@ fun AdminPanelScreen(
     onLogout: () -> Unit
 ) {
     var tab by remember { mutableStateOf(AdminTab.PUBLISH) }
+    val subscriptionVm: SubscriptionAdminViewModel = viewModel()
+    val pendingOrders by subscriptionVm.orders.collectAsState()
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
@@ -67,7 +69,7 @@ fun AdminPanelScreen(
                 Tab(
                     selected = tab == t,
                     onClick = { tab = t },
-                    text = { Text(t.label, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal) },
+                    text = { Text(if (t == AdminTab.SUBSCRIPTIONS && pendingOrders.isNotEmpty()) "${t.label} (${pendingOrders.size})" else t.label, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal) },
                     selectedContentColor = GoldPrimary,
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -78,6 +80,7 @@ fun AdminPanelScreen(
             AdminTab.PUBLISH -> PublishSignalTab(adminUid)
             AdminTab.SIGNALS -> ManageSignalsTab()
             AdminTab.CODES -> ManageCodesTab(adminUid)
+            AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
             AdminTab.USERS -> ManageUsersTab()
             AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
             AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
@@ -314,6 +317,55 @@ private fun ManageCodesTab(adminUid: String, vm: AdminViewModel = viewModel()) {
  * Panel User Management: admin bisa lihat semua akun (email, role, expiry premium)
  * dan langsung naik/turunin role USER <-> PREMIUM tanpa perlu generate kode dulu.
  */
+@Composable
+private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
+    val orders by vm.orders.collectAsState()
+    val message by vm.message.collectAsState()
+    Column(Modifier.fillMaxSize()) {
+        Text(
+            "Approval Langganan Manual",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Saat APPROVED, Cloud Function otomatis menambah durasi dan mengubah USER menjadi PREMIUM.",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (!message.isNullOrBlank()) Text(message ?: "", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary)
+        if (orders.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Belum ada pesanan yang menunggu approval.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(orders) { order ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(order.packageName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(com.sevengold.signalapp.ui.common.rupiah(order.price), fontWeight = FontWeight.Bold, color = GoldPrimary)
+                            }
+                            Text("${order.email.ifBlank { order.uid }} • +${order.durationDays} hari")
+                            Text("Order: ${order.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Status: MENUNGGU PEMBAYARAN / APPROVAL", style = MaterialTheme.typography.labelSmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { vm.approve(order.id) }) { Text("Approve") }
+                                OutlinedButton(onClick = { vm.reject(order.id) }) { Text("Tolak") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel()) {
     val settings by vm.referralSettings.collectAsState()

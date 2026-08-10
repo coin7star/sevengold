@@ -119,3 +119,72 @@ exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", as
     });
   });
 });
+
+/**
+ * Approval langganan manual.
+ * Admin hanya mengubah status order menjadi APPROVED/REJECTED.
+ * Saat APPROVED, function server yang mengubah role + expiry user agar client tidak bisa
+ * memberikan Premium sendiri.
+ */
+exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orderId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!before || !after) return;
+  if (before.status === after.status) return;
+  if (after.status !== "APPROVED") return;
+  if (after.approvalProcessedAt) return;
+
+  const db = getFirestore();
+  const orderRef = db.collection("subscriptionOrders").doc(event.params.orderId);
+  const userRef = db.collection("users").doc(after.uid);
+  const now = Date.now();
+
+  // Validasi snapshot paket sebelum memberi Premium. Ini mencegah client mengirim
+  // order palsu dengan harga murah tetapi durationDays sangat besar.
+  const packageSnap = await db.collection("appSettings").doc("subscriptionPackages").get();
+  const packageList = packageSnap.exists && Array.isArray(packageSnap.data()?.packages)
+    ? packageSnap.data().packages
+    : [
+      { id: "starter", name: "Starter", price: 10000, durationDays: 7, enabled: true },
+      { id: "basic", name: "Basic", price: 15000, durationDays: 10, enabled: true },
+      { id: "pro", name: "Pro", price: 30000, durationDays: 20, enabled: true },
+      { id: "vip", name: "VIP", price: 50000, durationDays: 30, enabled: true },
+    ];
+  const configuredPackage = packageList.find((pkg) =>
+    pkg && pkg.id === after.packageId &&
+    pkg.enabled !== false &&
+    Number(pkg.price) === Number(after.price) &&
+    Number(pkg.durationDays) === Number(after.durationDays)
+  );
+  if (!configuredPackage) {
+    console.warn(`Order ${event.params.orderId} tidak cocok dengan konfigurasi paket aktif; Premium tidak diberikan.`);
+    return;
+  }
+
+  const durationDays = Math.max(1, Math.min(3650, Number(after.durationDays || 0)));
+  const durationMillis = durationDays * 24 * 60 * 60 * 1000;
+
+  await db.runTransaction(async (tx) => {
+    const [orderSnap, userSnap] = await tx.getAll(orderRef, userRef);
+    if (!orderSnap.exists || !userSnap.exists) return;
+    const order = orderSnap.data();
+    const user = userSnap.data();
+    if (order.approvalProcessedAt) return;
+
+    const currentExpiry = Number(user.premiumExpiryMillis || 0);
+    const base = currentExpiry > now ? currentExpiry : now;
+    const newExpiry = base + durationMillis;
+
+    tx.update(userRef, {
+      role: user.role === "ADMIN" ? "ADMIN" : "PREMIUM",
+      premiumExpiryMillis: user.role === "ADMIN" ? (user.premiumExpiryMillis || null) : newExpiry,
+      lastSubscriptionActivatedAt: now,
+      lastSubscriptionOrderId: event.params.orderId,
+    });
+
+    tx.update(orderRef, {
+      approvalProcessedAt: now,
+      processedExpiryMillis: newExpiry,
+    });
+  });
+});
