@@ -426,3 +426,10 @@ Ringkasan paket pada banner Premium kini memakai grid 2 kolom yang lebih rapi. S
 - Jika tidak ada label promo, paket dengan harga per hari Premium paling rendah diprioritaskan.
 - Tombol **Lihat Semua Paket & Beli** tetap membuka seluruh paket aktif.
 - Admin tetap dapat mengelola semua paket dari Admin Panel > Paket Langganan.
+
+
+## V16 - Admin User Role Filter
+- Admin Users panel now has role filters for Semua, USER, PREMIUM, and ADMIN.
+- Each filter shows the current user count.
+- Filtering uses `effectiveRole`, so expired Premium users are classified consistently with the app's effective role logic.
+- No new Firestore collections or fields are required.

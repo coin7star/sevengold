@@ -699,6 +699,12 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
         }
     }
 
+    var selectedRoleFilter by remember { mutableStateOf<com.sevengold.signalapp.data.model.Role?>(null) }
+
+    val filteredUsers = remember(users, selectedRoleFilter) {
+        selectedRoleFilter?.let { role -> users.filter { it.effectiveRole == role } } ?: users
+    }
+
     Column(Modifier.fillMaxSize()) {
         if (actionMessage != null) {
             Text(
@@ -707,11 +713,59 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+
+        // Filter role agar Admin lebih mudah mencari user tertentu.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                "Filter Role",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = selectedRoleFilter == null,
+                    onClick = { selectedRoleFilter = null },
+                    label = { Text("Semua (${users.size})") }
+                )
+                FilterChip(
+                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.USER,
+                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.USER },
+                    label = { Text("USER (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.USER }})") }
+                )
+                FilterChip(
+                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.PREMIUM,
+                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.PREMIUM },
+                    label = { Text("PREMIUM (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM }})") }
+                )
+                FilterChip(
+                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.ADMIN,
+                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.ADMIN },
+                    label = { Text("ADMIN (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.ADMIN }})") }
+                )
+            }
+        }
+
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(users) { u -> UserRow(u, vm) }
+            item {
+                Text(
+                    "${filteredUsers.size} user ditampilkan",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+            items(filteredUsers) { u -> UserRow(u, vm) }
         }
     }
 }
