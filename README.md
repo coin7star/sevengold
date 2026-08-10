@@ -360,3 +360,19 @@ Jika function belum pernah aktif di Firebase, workflow deploy di atas akan menga
 - Admin approval tidak lagi menolak order lama hanya karena harga paket di katalog sudah berubah. Validasi approval menggunakan `packageId` + `durationDays`; nominal tetap diverifikasi admin secara manual sebelum APPROVE.
 - Panel Pesanan menampilkan harga normal, diskon, dan total yang harus dibayar.
 - Order yang sama tetap idempotent dan tidak dapat diberi Premium dua kali.
+
+
+## Manual Approval Subscription (V7)
+
+Approval langganan sengaja dibuat sederhana untuk fase awal:
+- User memilih paket dan, bila punya voucher, harga diskon dihitung langsung di layar sebelum order dibuat.
+- Order menyimpan snapshot `packageId`, `packageName`, `originalPrice`, `discountPercent`, `discountAmount`, `price`, dan `durationDays`.
+- Admin memeriksa pembayaran manual lalu menekan **Approve**.
+- Approval menggunakan `durationDays` yang tersimpan di order, sehingga **tidak gagal hanya karena paket di `appSettings/subscriptionPackages` sudah diubah/dinonaktifkan setelah order dibuat**.
+- User biasa menjadi `PREMIUM` dan expiry dihitung dari expiry lama jika masih aktif, atau dari waktu sekarang jika sudah habis.
+- User PREMIUM membeli lagi -> durasi ditambahkan ke expiry yang tersisa.
+- Voucher hanya berfungsi sebagai **diskon harga**. Voucher ditandai terpakai setelah order di-approve.
+- Referral reward tetap diberikan satu kali setelah subscription berhasil, sesuai `appSettings/referral.rewardPremiumDays`.
+
+Contoh:
+`Rp10.000 - voucher 10% = Rp9.000` untuk paket 7 hari. Admin cukup memverifikasi pembayaran Rp9.000 dan Approve; akun mendapat +7 hari Premium.

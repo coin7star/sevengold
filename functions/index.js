@@ -139,28 +139,8 @@ exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orde
   const userRef = db.collection("users").doc(after.uid);
   const now = Date.now();
 
-  // Validasi snapshot paket sebelum memberi Premium. Ini mencegah client mengirim
-  // order palsu dengan harga murah tetapi durationDays sangat besar.
-  const packageSnap = await db.collection("appSettings").doc("subscriptionPackages").get();
-  const packageList = packageSnap.exists && Array.isArray(packageSnap.data()?.packages)
-    ? packageSnap.data().packages
-    : [
-      { id: "starter", name: "Starter", price: 10000, durationDays: 7, enabled: true },
-      { id: "basic", name: "Basic", price: 15000, durationDays: 10, enabled: true },
-      { id: "pro", name: "Pro", price: 30000, durationDays: 20, enabled: true },
-      { id: "vip", name: "VIP", price: 50000, durationDays: 30, enabled: true },
-    ];
-  const configuredPackage = packageList.find((pkg) =>
-    pkg && pkg.id === after.packageId &&
-    pkg.enabled !== false &&
-    Number(pkg.price) === Number(after.price) &&
-    Number(pkg.durationDays) === Number(after.durationDays)
-  );
-  if (!configuredPackage) {
-    console.warn(`Order ${event.params.orderId} tidak cocok dengan konfigurasi paket aktif; Premium tidak diberikan.`);
-    return;
-  }
-
+  // Order menyimpan snapshot durasi saat dibuat. Approval manual tidak
+  // bergantung pada katalog paket yang bisa berubah setelah order dibuat.
   const durationDays = Math.max(1, Math.min(3650, Number(after.durationDays || 0)));
   const durationMillis = durationDays * 24 * 60 * 60 * 1000;
 

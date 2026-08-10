@@ -329,7 +329,7 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Saat APPROVED, akun langsung diproses menjadi PREMIUM dan durasinya ditambahkan.",
+            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Durasi pada pesanan dipakai langsung; tidak bergantung pada katalog paket yang sekarang.",
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
