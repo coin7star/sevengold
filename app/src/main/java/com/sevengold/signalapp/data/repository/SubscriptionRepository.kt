@@ -79,27 +79,14 @@ class SubscriptionRepository(private val db: FirebaseFirestore = FirebaseFiresto
                 val referrerSnap = referrerRef?.let { tx.get(it) }
                 val settingsRef = db.collection("appSettings").document("referral")
                 val settingsSnap = tx.get(settingsRef)
-                val packageRef = db.collection("appSettings").document("subscriptionPackages")
-                val packageSnap = tx.get(packageRef)
-
+                // Approval manual memakai snapshot order yang sudah dibuat saat user
+                // checkout. Admin memverifikasi pembayaran secara manual, jadi approval
+                // TIDAK boleh bergantung pada katalog paket yang mungkin sudah berubah
+                // atau dinonaktifkan setelah order dibuat. Durasi dari order dibatasi agar
+                // tetap aman dari manipulasi client.
                 val durationDays = ((order["durationDays"] as? Number)?.toLong() ?: 0L)
                     .coerceIn(1L, 3650L)
                 val durationMillis = durationDays * 24L * 60L * 60L * 1000L
-
-                // Approval manual: identitas paket + durasi harus cocok dengan katalog aktif.
-                // Harga TIDAK dibandingkan lagi dengan order lama karena admin bisa mengubah
-                // harga paket setelah order dibuat. Untuk pembayaran manual, admin tetap
-                // memverifikasi nominal transfer sebelum menekan APPROVE.
-                val packageId = order["packageId"] as? String ?: error("Paket pesanan tidak valid")
-                val configuredPackages = packageSnap.get("packages") as? List<*>
-                val configuredPackage = configuredPackages
-                    ?.mapNotNull { it as? Map<*, *> }
-                    ?.firstOrNull { pkg ->
-                        pkg["id"] == packageId &&
-                            pkg["enabled"] != false &&
-                            (pkg["durationDays"] as? Number)?.toLong() == durationDays
-                    }
-                if (configuredPackage == null) error("Paket tidak ditemukan / sudah dinonaktifkan")
 
                 val currentExpiry = (user["premiumExpiryMillis"] as? Number)?.toLong() ?: 0L
                 val base = if (currentExpiry > now) currentExpiry else now

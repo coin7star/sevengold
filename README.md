@@ -369,3 +369,8 @@ Jika function belum pernah aktif di Firebase, workflow deploy di atas akan menga
 - Jika user memiliki voucher welcome, halaman paket menampilkan banner **"Kamu punya Voucher Welcome!"** agar tidak mudah terlewat.
 - Setelah registrasi menggunakan referral, user langsung melihat dialog berisi kode voucher welcome dan instruksi bahwa voucher digunakan saat membeli paket.
 - Voucher tetap opsional dan baru dicatat sebagai terpakai setelah order disetujui.
+
+## Subscription approval fix (V10)
+
+Manual approval now uses the `durationDays` snapshot stored in the order. Approval no longer checks whether the package still exists or is enabled in `appSettings/subscriptionPackages`. This prevents valid pending orders from becoming unapprovable after an admin edits/deactivates a package. Admin still verifies the transfer amount manually before approving.
+
