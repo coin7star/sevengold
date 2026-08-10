@@ -29,7 +29,10 @@ fun SubscriptionBanner(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(
                 if (premium) "💎 Perpanjang Premium" else "👑 Upgrade ke Premium",
                 style = MaterialTheme.typography.titleMedium,
@@ -41,26 +44,81 @@ fun SubscriptionBanner(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                packages.take(2).forEach { pkg -> PackageMini(pkg, Modifier.weight(1f)) }
-            }
-            if (packages.size > 2) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    packages.drop(2).forEach { pkg -> PackageMini(pkg, Modifier.weight(1f)) }
+
+            // Tampilkan paket sebagai grid 2 kolom agar rapi, termasuk saat
+            // jumlah paket ganjil (kartu terakhir tidak dipaksa memenuhi satu baris).
+            packages.chunked(2).forEach { rowPackages ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    rowPackages.forEach { pkg ->
+                        PackageMini(
+                            pkg = pkg,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowPackages.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
-            Button(onClick = onBuy, modifier = Modifier.fillMaxWidth()) {
-                Text("Lihat Paket & Beli")
+
+            Button(
+                onClick = onBuy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Lihat Semua Paket & Beli")
             }
         }
     }
 }
 
 @Composable
-private fun PackageMini(pkg: SubscriptionPackage, modifier: Modifier) {
-    Column(modifier) {
-        Text(pkg.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-        Text("${rupiah(pkg.price)} • ${pkg.durationDays} hari", style = MaterialTheme.typography.labelSmall)
+private fun PackageMini(
+    pkg: SubscriptionPackage,
+    modifier: Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+    ) {
+        Column(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    pkg.name,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge
+                )
+                if (pkg.label.isNotBlank()) {
+                    Text(
+                        pkg.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Text(
+                rupiah(pkg.price),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "+${pkg.durationDays} hari Premium",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

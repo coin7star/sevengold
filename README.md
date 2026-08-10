@@ -414,3 +414,7 @@ Konfigurasi paket disimpan di:
 Perubahan paket hanya berlaku untuk **order baru**. Order yang sudah dibuat tetap menyimpan `packageName`, `price`, dan `durationDays` pada dokumen order sehingga aman jika harga/durasi paket diubah setelah checkout.
 
 Firestore Rules yang ada sudah mengizinkan ADMIN menulis `appSettings`; tidak perlu membuat collection baru untuk Package Manager.
+
+
+## UI Paket Langganan (V14)
+Ringkasan paket pada banner Premium kini memakai grid 2 kolom yang lebih rapi. Setiap paket ditampilkan sebagai kartu kecil berisi nama, harga, durasi, dan label. Jika jumlah paket ganjil, kartu terakhir tetap tersusun rapi tanpa melebar penuh.
