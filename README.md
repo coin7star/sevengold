@@ -226,3 +226,9 @@ Kalau nanti mau lanjut ke tahap Cloud Functions atau login Google, tinggal bilan
 - Nilai `message` sekarang disalin ke local `currentMessage` sebelum dipakai di `startsWith`, sehingga aman untuk property yang berasal dari `StateFlow`/custom getter.
 - Custom Referral tetap menggunakan `appSettings/referral`, sehingga admin dapat mengubah bonus Premium referrer dan persentase voucher welcome tanpa mengubah source code.
 
+
+
+### Referral login fix
+- Fixed `PERMISSION_DENIED` on login caused by `ensureReferralData()` attempting to overwrite an existing `referralCodes/{code}` document.
+- Existing referral code documents are now read and preserved; a new document is only created when missing.
+- Firestore rules also verify that a referral code can only be created/updated by its owner and its UID cannot be changed.

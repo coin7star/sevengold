@@ -41,7 +41,12 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if false;
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if false;
+      // Update tetap dibatasi ke pemilik kode dan UID tidak boleh diganti.
+      // Login normal di client tidak membutuhkan update karena kode yang sudah ada
+      // akan dipertahankan; rule ini menjadi defense-in-depth.
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid;
       allow delete: if false;
     }
 

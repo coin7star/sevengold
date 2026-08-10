@@ -97,9 +97,22 @@ class AuthRepository(
             updates["email"] = email
         }
         ref.update(updates).await()
-        db.collection("referralCodes").document(referralCode).set(
-            mapOf("uid" to uid, "createdAt" to (snap.getLong("createdAt") ?: System.currentTimeMillis()))
-        ).await()
+
+        // Jangan menimpa dokumen referral code yang sudah ada.
+        // Firestore rules hanya mengizinkan user membuat kode miliknya sendiri,
+        // sehingga login ulang tidak boleh berubah menjadi operasi UPDATE.
+        val referralRef = db.collection("referralCodes").document(referralCode)
+        val referralSnap = referralRef.get().await()
+        if (!referralSnap.exists()) {
+            referralRef.set(
+                mapOf(
+                    "uid" to uid,
+                    "createdAt" to (snap.getLong("createdAt") ?: System.currentTimeMillis())
+                )
+            ).await()
+        } else if (referralSnap.getString("uid") != uid) {
+            error("Kode referral user tidak valid")
+        }
     }
 
     fun logout() = auth.signOut()
