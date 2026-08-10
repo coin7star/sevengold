@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
+    var referralCode by remember { mutableStateOf("") }
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(state.success) {
@@ -89,6 +91,20 @@ fun RegisterScreen(
                     leadingIcon = Icons.Filled.LockReset,
                     isPassword = true
                 )
+                Spacer(Modifier.height(14.dp))
+
+                PremiumTextField(
+                    value = referralCode,
+                    onValueChange = { referralCode = it.uppercase() },
+                    label = "Kode Referral (opsional)",
+                    leadingIcon = Icons.Filled.Person
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Pakai kode teman untuk mendapatkan voucher welcome berlangganan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 if (state.error != null) {
                     Spacer(Modifier.height(14.dp))
@@ -103,7 +119,7 @@ fun RegisterScreen(
                 GoldButton(
                     text = "Daftar",
                     loading = state.loading,
-                    onClick = { viewModel.register(email, password, confirm) }
+                    onClick = { viewModel.register(email, password, confirm, referralCode) }
                 )
 
                 Spacer(Modifier.height(16.dp))

@@ -27,6 +27,57 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## Update terbaru — Referral & Welcome Voucher
+
+Versi ini menambahkan **program referral** end-to-end:
+
+- Setiap akun punya **kode referral pribadi** format `SGXXXXXXXX`.
+- Saat register, user bisa memasukkan kode referral teman.
+- Teman baru yang mendaftar memakai kode referral otomatis mendapat **voucher welcome 10%** untuk pembelian/berlangganan pertama. Voucher tampil di Profil dan bisa ditunjukkan ke admin saat pembayaran.
+- **Bonus referral aktif setelah teman benar-benar berlangganan**, yaitu setelah kode langganan berhasil diredeem.
+- Referrer otomatis mendapat **+2 hari Premium**. Kalau referrer sedang Premium, 2 hari ditambahkan ke expiry yang masih aktif; kalau sudah USER/expired, role diaktifkan kembali menjadi PREMIUM selama 2 hari.
+- Satu teman hanya menghasilkan **satu reward referral**, walaupun teman tersebut memperpanjang Premium lagi di kemudian hari.
+- Profil menampilkan kode referral, voucher welcome, jumlah referral yang berhasil, dan total hari bonus yang terkumpul.
+- Logika pemberian bonus dijalankan oleh **Cloud Function** agar reward tidak bergantung pada client Android dan dibuat idempotent untuk mencegah bonus dobel.
+
+> **Catatan voucher:** sistem pembayaran otomatis belum ada di project ini. Voucher 10% disimpan sebagai benefit welcome dan ditampilkan ke user; admin tetap memproses harga/diskon saat transaksi berlangganan manual.
+
+### Alur referral
+
+```text
+USER A
+  │
+  ├─ Bagikan kode: SGXXXXXXXX
+  │
+  ▼
+USER B daftar + memasukkan kode referral
+  │
+  ├─ Voucher welcome 10% dibuat otomatis
+  │
+  ▼
+USER B berlangganan / redeem kode Premium
+  │
+  ├─ lastSubscriptionActivatedAt dicatat
+  ▼
+Cloud Function mendeteksi aktivasi
+  │
+  ├─ USER A +2 hari Premium
+  └─ referral B ditandai sudah mendapat reward
+```
+
+### Deploy Cloud Functions referral
+
+Setelah project Firebase sudah terhubung, deploy Functions agar bonus referral benar-benar aktif:
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+Jika Firebase CLI belum terpasang, gunakan Firebase CLI sesuai environment yang kamu pakai. **Cloud Function `onReferralSubscriptionActivated` wajib ter-deploy** karena fungsi inilah yang memberi bonus 2 hari secara server-side.
+
 ## 1. Setup Firebase
 
 1. Buka https://console.firebase.google.com → **Add project** → beri nama bebas (mis. `signal-app`).
@@ -92,6 +143,19 @@ users/{uid}
   role: "ADMIN" | "PREMIUM" | "USER"
   premiumExpiryMillis: number | null   // timestamp kapan premium berakhir
   createdAt: number
+  referralCode: string
+  referredByUid: string | null
+  referralRewardGranted: boolean
+  referralSuccessfulCount: number
+  referralRewardDaysEarned: number
+  welcomeVoucherCode: string
+  welcomeVoucherPercent: number
+  welcomeVoucherUsed: boolean
+  lastSubscriptionActivatedAt: number | null
+
+referralCodes/{referralCode}
+  uid: string
+  createdAt: number
 
 signals/{signalId}
   pair: "XAUUSD"
@@ -117,14 +181,16 @@ subscriptionCodes/{code}
 2. Kode itu dikirim manual ke user (WhatsApp/dsb) — misalnya setelah user transfer pembayaran ke admin.
 3. USER buka tombol **Masukkan Kode Langganan** → input kode → kalau valid, role otomatis naik jadi `PREMIUM` dan `premiumExpiryMillis` di-set.
 4. Kalau user (yang sudah PREMIUM) redeem kode lain lagi sebelum expired, durasinya **ditambahkan** ke sisa waktu yang ada (bukan menimpa).
-5. Kalau `premiumExpiryMillis` sudah lewat, aplikasi otomatis menganggap dia balik jadi tampilan USER lagi (dicek di `AppUser.effectiveRole`), tanpa perlu admin turunkan manual.
+5. Saat redeem berhasil, field `lastSubscriptionActivatedAt` dicatat. Jika akun punya `referredByUid`, Cloud Function memproses bonus referral.
+6. Kalau `premiumExpiryMillis` sudah lewat, aplikasi otomatis menganggap dia balik jadi tampilan USER lagi (dicek di `AppUser.effectiveRole`), tanpa perlu admin turunkan manual.
 
 ## Catatan keamanan (penting dibaca sebelum production)
 
 Versi ini punya batasan yang wajar untuk MVP tapi perlu kamu tahu:
 
 - **Blur sinyal untuk USER dilakukan di sisi aplikasi (client-side)**, bukan di server. Artinya data sinyal sebenarnya tetap terkirim ke HP semua user yang login, cuma disembunyikan di tampilan. Untuk keamanan lebih ketat (data premium benar-benar tidak sampai ke device non-premium), langkah lanjutannya adalah pindahkan pembacaan sinyal ke **Cloud Function** yang mengecek role user dulu sebelum mengirim data — bukan baca langsung dari Firestore di client.
-- Redeem kode saat ini dieksekusi dari sisi client lewat Firestore transaction. Ini cukup aman karena pakai transaction (tidak bisa dipakai 2x sekaligus), tapi kalau mau lebih kuat lagi, sebaiknya dipindah ke **Cloud Function** juga supaya logika bisnisnya tidak bisa direverse-engineer dari APK.
+- Redeem kode saat ini dieksekusi dari sisi client lewat Firestore transaction. Ini cukup aman untuk mencegah satu kode dipakai dua kali secara bersamaan, tetapi untuk production yang lebih ketat logika redeem juga sebaiknya dipindahkan ke Cloud Function.
+- **Reward referral sudah dipindahkan ke Cloud Function** sehingga referrer tidak bisa sekadar mengubah UI/client untuk mengklaim bonus 2 hari. Sistem memakai flag `referralRewardGranted` agar reward per teman hanya diberikan sekali.
 - Login Google/provider lain (yang disebut untuk fase berikutnya) belum diimplementasikan di versi ini — baru email/password sesuai permintaan awal.
 
 Kalau nanti mau lanjut ke tahap Cloud Functions atau login Google, tinggal bilang — bisa dilanjutkan dari fondasi ini.

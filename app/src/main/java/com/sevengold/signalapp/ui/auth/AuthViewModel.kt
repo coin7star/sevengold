@@ -35,7 +35,7 @@ class AuthViewModel(
         }
     }
 
-    fun register(email: String, password: String, confirmPassword: String) {
+    fun register(email: String, password: String, confirmPassword: String, referralCode: String = "") {
         if (email.isBlank() || password.isBlank()) {
             _state.value = AuthUiState(error = "Email dan password wajib diisi")
             return
@@ -50,7 +50,7 @@ class AuthViewModel(
         }
         _state.value = AuthUiState(loading = true)
         viewModelScope.launch {
-            val result = repo.register(email.trim(), password)
+            val result = repo.register(email.trim(), password, referralCode)
             _state.value = result.fold(
                 onSuccess = { AuthUiState(success = true) },
                 onFailure = { AuthUiState(error = it.message ?: "Registrasi gagal") }

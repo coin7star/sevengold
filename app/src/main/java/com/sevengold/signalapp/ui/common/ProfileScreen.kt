@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -105,6 +107,10 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        ReferralCard(user)
+
+        Spacer(Modifier.height(16.dp))
+
         // Penjelasan singkat per-role, supaya user awam tidak bingung fitur apa yang dia punya.
         InfoCard(accentText = true) {
             Text("TENTANG ROLE KAMU", style = MaterialTheme.typography.labelLarge, color = GoldLight)
@@ -137,6 +143,66 @@ fun ProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun ReferralCard(user: AppUser) {
+    val clipboard = LocalClipboardManager.current
+    val referralCode = user.referralCode.ifBlank { "SG${user.uid.take(8).uppercase()}" }
+    val voucherCode = user.welcomeVoucherCode
+
+    InfoCard(accentText = true) {
+        Text("PROGRAM REFERRAL", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Ajak teman berlangganan. Setelah teman berhasil berlangganan, kamu otomatis mendapat bonus 2 hari Premium.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        ReferralCodeRow("Kode referral", referralCode) {
+            clipboard.setText(AnnotatedString(referralCode))
+        }
+        if (voucherCode.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            ReferralCodeRow("Voucher welcome", voucherCode) {
+                clipboard.setText(AnnotatedString(voucherCode))
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Diskon welcome: ${user.welcomeVoucherPercent}% untuk teman baru. Tunjukkan voucher ke admin saat berlangganan.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Belum ada voucher welcome. Masukkan kode referral teman saat membuat akun untuk mendapatkannya.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Referral berhasil: ${user.referralSuccessfulCount} • Bonus terkumpul: ${user.referralRewardDaysEarned} hari Premium",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun ReferralCodeRow(label: String, value: String, onCopy: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldLight)
+        }
+        TextButton(onClick = onCopy) { Text("Salin") }
     }
 }
 

@@ -34,5 +34,15 @@ service cloud.firestore {
       allow create: if isSignedIn() && role() == 'ADMIN';
       allow update: if isSignedIn();
     }
+
+    // Lookup kode referral: user yang sudah berhasil membuat akun boleh mengambil
+    // satu dokumen referralCode saat proses registrasi selesai. List/query tidak dibuka.
+    match /referralCodes/{codeId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
   }
 }

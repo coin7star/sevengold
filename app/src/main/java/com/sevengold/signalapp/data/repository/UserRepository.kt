@@ -81,7 +81,14 @@ class UserRepository(
             val base = if (currentExpiry > now) currentExpiry else now
             val newExpiry = base + durationMillis
 
-            tx.update(userRef, mapOf("role" to "PREMIUM", "premiumExpiryMillis" to newExpiry))
+            tx.update(
+                userRef,
+                mapOf(
+                    "role" to "PREMIUM",
+                    "premiumExpiryMillis" to newExpiry,
+                    "lastSubscriptionActivatedAt" to now
+                )
+            )
             tx.update(
                 codeRef,
                 mapOf(

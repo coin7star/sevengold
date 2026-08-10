@@ -21,7 +21,18 @@ data class AppUser(
     val role: Role = Role.USER,
     // Waktu (epoch millis) kapan status premium berakhir. Null = belum pernah premium.
     val premiumExpiryMillis: Long? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // Referral: kode pribadi yang bisa dibagikan ke teman.
+    val referralCode: String = "",
+    val referredByUid: String? = null,
+    // Ditandai server setelah teman berhasil berlangganan untuk mencegah reward dobel.
+    val referralRewardGranted: Boolean = false,
+    val referralSuccessfulCount: Int = 0,
+    val referralRewardDaysEarned: Int = 0,
+    // Voucher welcome untuk teman baru; default 10% dan dipakai manual saat berlangganan.
+    val welcomeVoucherCode: String = "",
+    val welcomeVoucherPercent: Int = 0,
+    val welcomeVoucherUsed: Boolean = false
 ) {
     /** PREMIUM dianggap aktif hanya jika role == PREMIUM DAN belum lewat expiry. */
     val isPremiumActive: Boolean
@@ -40,7 +51,15 @@ data class AppUser(
         "email" to email,
         "role" to role.name,
         "premiumExpiryMillis" to premiumExpiryMillis,
-        "createdAt" to createdAt
+        "createdAt" to createdAt,
+        "referralCode" to referralCode,
+        "referredByUid" to referredByUid,
+        "referralRewardGranted" to referralRewardGranted,
+        "referralSuccessfulCount" to referralSuccessfulCount,
+        "referralRewardDaysEarned" to referralRewardDaysEarned,
+        "welcomeVoucherCode" to welcomeVoucherCode,
+        "welcomeVoucherPercent" to welcomeVoucherPercent,
+        "welcomeVoucherUsed" to welcomeVoucherUsed
     )
 
     companion object {
@@ -51,7 +70,15 @@ data class AppUser(
                 email = map["email"] as? String ?: "",
                 role = Role.fromString(map["role"] as? String),
                 premiumExpiryMillis = (map["premiumExpiryMillis"] as? Number)?.toLong(),
-                createdAt = (map["createdAt"] as? Number)?.toLong() ?: 0L
+                createdAt = (map["createdAt"] as? Number)?.toLong() ?: 0L,
+                referralCode = map["referralCode"] as? String ?: "",
+                referredByUid = map["referredByUid"] as? String,
+                referralRewardGranted = map["referralRewardGranted"] as? Boolean ?: false,
+                referralSuccessfulCount = (map["referralSuccessfulCount"] as? Number)?.toInt() ?: 0,
+                referralRewardDaysEarned = (map["referralRewardDaysEarned"] as? Number)?.toInt() ?: 0,
+                welcomeVoucherCode = map["welcomeVoucherCode"] as? String ?: "",
+                welcomeVoucherPercent = (map["welcomeVoucherPercent"] as? Number)?.toInt() ?: 0,
+                welcomeVoucherUsed = map["welcomeVoucherUsed"] as? Boolean ?: false
             )
         }
     }

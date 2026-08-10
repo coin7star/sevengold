@@ -10,6 +10,7 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getFirestore } = require("firebase-admin/firestore");
 
 initializeApp();
 
@@ -55,5 +56,60 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
       title,
       body: `${typeLabel(after.type)} XAUUSD @ ${after.entry}`,
     },
+  });
+});
+
+
+const REFERRAL_PREMIUM_DAYS = 2;
+
+/**
+ * Saat teman yang punya referredByUid benar-benar mengaktifkan subscription,
+ * referrer mendapat bonus 2 hari Premium. Reward hanya diberikan sekali per teman.
+ * lastSubscriptionActivatedAt ditulis oleh transaction redeem subscription di Android.
+ */
+exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!before || !after) return;
+
+  const activationChanged = after.lastSubscriptionActivatedAt &&
+    after.lastSubscriptionActivatedAt !== before.lastSubscriptionActivatedAt;
+  if (!activationChanged || after.referralRewardGranted === true) return;
+
+  const referrerUid = after.referredByUid;
+  if (!referrerUid || referrerUid === event.params.userId) return;
+
+  const db = getFirestore();
+  const referredRef = db.collection("users").doc(event.params.userId);
+  const referrerRef = db.collection("users").doc(referrerUid);
+  const now = Date.now();
+  const bonusMillis = REFERRAL_PREMIUM_DAYS * 24 * 60 * 60 * 1000;
+
+  await db.runTransaction(async (tx) => {
+    const [referredSnap, referrerSnap] = await tx.getAll(referredRef, referrerRef);
+
+    if (!referredSnap.exists || !referrerSnap.exists) return;
+    const referred = referredSnap.data();
+    const referrer = referrerSnap.data();
+
+    // Idempotency: kalau retry/function terpicu ulang, jangan kasih bonus kedua.
+    if (referred.referralRewardGranted === true) return;
+
+    const currentExpiry = Number(referrer.premiumExpiryMillis || 0);
+    const base = currentExpiry > now ? currentExpiry : now;
+    const newExpiry = base + bonusMillis;
+
+    tx.update(referrerRef, {
+      role: referrer.role === "ADMIN" ? "ADMIN" : "PREMIUM",
+      premiumExpiryMillis: referrer.role === "ADMIN" ? (referrer.premiumExpiryMillis || null) : newExpiry,
+      referralSuccessfulCount: Number(referrer.referralSuccessfulCount || 0) + 1,
+      referralRewardDaysEarned: Number(referrer.referralRewardDaysEarned || 0) + REFERRAL_PREMIUM_DAYS,
+      lastReferralRewardAt: now,
+    });
+
+    tx.update(referredRef, {
+      referralRewardGranted: true,
+      referralRewardGrantedAt: now,
+    });
   });
 });
