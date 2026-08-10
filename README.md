@@ -309,3 +309,36 @@ firebase deploy --only functions
 ```
 
 `onSubscriptionOrderUpdated` wajib ter-deploy agar tombol **Approve** benar-benar mengaktifkan Premium secara server-side.
+
+## Automatic Firebase deployment from GitHub
+
+Project ini sekarang memiliki workflow `.github/workflows/deploy-firebase.yml`.
+Setiap push ke branch `main` yang mengubah `functions/`, `firestore.rules`, `firebase.json`, atau workflow deploy akan otomatis:
+
+1. install Firebase CLI,
+2. install dependency Cloud Functions,
+3. deploy semua Cloud Functions, termasuk `onSubscriptionOrderUpdated`,
+4. deploy Firestore Rules.
+
+### GitHub Secrets yang wajib disiapkan sekali
+
+Di GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+
+Tambahkan:
+
+- `FIREBASE_PROJECT_ID` = Firebase Project ID kamu.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` = isi lengkap JSON Service Account Firebase/Google Cloud (bukan file path dan bukan base64).
+
+Setelah dua secret ini ada, cukup push ke `main`. Tidak perlu menjalankan `firebase deploy` dari komputer untuk perubahan backend berikutnya.
+
+### Subscription approval
+
+Saat admin mengubah order `PENDING` menjadi `APPROVED`, Cloud Function `onSubscriptionOrderUpdated` akan otomatis:
+
+- memvalidasi paket berdasarkan `appSettings/subscriptionPackages`,
+- mengubah USER menjadi `PREMIUM`,
+- menambah durasi ke `premiumExpiryMillis` jika user sudah Premium,
+- mencatat `lastSubscriptionActivatedAt` dan `lastSubscriptionOrderId`,
+- membuat proses idempotent agar order yang sama tidak memberi Premium dua kali.
+
+Jika function belum pernah aktif di Firebase, workflow deploy di atas akan mengaktifkannya otomatis setelah perubahan ini dipush ke `main`.
