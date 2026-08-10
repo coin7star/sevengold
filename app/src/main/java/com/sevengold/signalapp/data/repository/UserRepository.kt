@@ -30,6 +30,40 @@ class UserRepository(
      * - Menambah durasi ke expiry yang lama kalau masih aktif (bukan menimpa),
      *   atau mulai dari sekarang kalau sudah expired/baru pertama kali.
      */
+    /**
+     * Real-time daftar SEMUA user, dipakai di panel User Management admin.
+     * Firestore rules mengizinkan ADMIN membaca semua dokumen di /users.
+     */
+    fun observeAllUsers(): Flow<List<AppUser>> = callbackFlow {
+        val registration = db.collection("users")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val users = snapshot?.documents?.map { AppUser.fromMap(it.id, it.data) } ?: emptyList()
+                trySend(users)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    /**
+     * ADMIN naikin/turunin role user langsung dari panel (tanpa lewat redeem kode).
+     * - Ke PREMIUM: set premiumExpiryMillis = sekarang + durationDays.
+     * - Ke USER: role diturunin, premiumExpiryMillis dibiarkan apa adanya (riwayat),
+     *   tapi karena role sudah USER, effectiveRole otomatis USER juga.
+     */
+    suspend fun adminSetRole(uid: String, role: com.sevengold.signalapp.data.model.Role, durationDays: Int? = null): Result<Unit> = runCatching {
+        val updates = mutableMapOf<String, Any?>("role" to role.name)
+        if (role == com.sevengold.signalapp.data.model.Role.PREMIUM) {
+            val days = durationDays ?: 30
+            updates["premiumExpiryMillis"] = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(days.toLong())
+        }
+        db.collection("users").document(uid).update(updates).await()
+        Unit
+    }
+
     suspend fun redeemCode(uid: String, code: String): Result<Long> = runCatching {
         db.runTransaction { tx ->
             val codeRef = db.collection("subscriptionCodes").document(code)

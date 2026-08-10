@@ -18,7 +18,7 @@ import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 
-private enum class AdminTab { PUBLISH, SIGNALS, CODES }
+private enum class AdminTab { PUBLISH, SIGNALS, CODES, USERS }
 
 @Composable
 fun AdminPanelScreen(
@@ -39,12 +39,14 @@ fun AdminPanelScreen(
             Tab(selected = tab == AdminTab.PUBLISH, onClick = { tab = AdminTab.PUBLISH }, text = { Text("Publish") })
             Tab(selected = tab == AdminTab.SIGNALS, onClick = { tab = AdminTab.SIGNALS }, text = { Text("Sinyal") })
             Tab(selected = tab == AdminTab.CODES, onClick = { tab = AdminTab.CODES }, text = { Text("Kode") })
+            Tab(selected = tab == AdminTab.USERS, onClick = { tab = AdminTab.USERS }, text = { Text("Users") })
         }
 
         when (tab) {
             AdminTab.PUBLISH -> PublishSignalTab(adminUid)
             AdminTab.SIGNALS -> ManageSignalsTab()
             AdminTab.CODES -> ManageCodesTab(adminUid)
+            AdminTab.USERS -> ManageUsersTab()
         }
     }
 }
@@ -195,6 +197,12 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            com.sevengold.signalapp.ui.common.PerformanceSummaryCard(
+                signals = signals,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
         items(signals) { signal ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
@@ -256,4 +264,101 @@ private fun ManageCodesTab(adminUid: String, vm: AdminViewModel = viewModel()) {
             }
         }
     }
+}
+
+/**
+ * Panel User Management: admin bisa lihat semua akun (email, role, expiry premium)
+ * dan langsung naik/turunin role USER <-> PREMIUM tanpa perlu generate kode dulu.
+ */
+@Composable
+private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
+    val users by vm.users.collectAsState()
+    val actionMessage by vm.actionMessage.collectAsState()
+
+    LaunchedEffect(actionMessage) {
+        if (actionMessage != null) {
+            kotlinx.coroutines.delay(2000)
+            vm.clearMessage()
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        if (actionMessage != null) {
+            Text(
+                actionMessage ?: "",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(users) { u -> UserRow(u, vm) }
+        }
+    }
+}
+
+@Composable
+private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserManagementViewModel) {
+    var showPremiumInput by remember { mutableStateOf(false) }
+    var days by remember { mutableStateOf("30") }
+    val df = remember { java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID")) }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(user.email.ifBlank { user.uid }, style = MaterialTheme.typography.titleSmall)
+                RoleBadge(user.effectiveRole)
+            }
+            if (user.role == com.sevengold.signalapp.data.model.Role.PREMIUM) {
+                val expiryText = user.premiumExpiryMillis?.let { df.format(java.util.Date(it)) } ?: "-"
+                Text(
+                    if (user.isPremiumActive) "Premium sampai: $expiryText" else "Premium expired: $expiryText",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
+            if (user.effectiveRole != com.sevengold.signalapp.data.model.Role.ADMIN) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (user.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM) {
+                        TextButton(onClick = { vm.setUser(user.uid) }) { Text("Turunkan ke USER") }
+                    } else {
+                        TextButton(onClick = { showPremiumInput = !showPremiumInput }) { Text("Jadikan PREMIUM") }
+                    }
+                }
+
+                if (showPremiumInput) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = days,
+                            onValueChange = { days = it },
+                            label = { Text("Durasi (hari)") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = {
+                            vm.setPremium(user.uid, days.toIntOrNull() ?: 30)
+                            showPremiumInput = false
+                        }) {
+                            Text("Konfirmasi")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoleBadge(role: com.sevengold.signalapp.data.model.Role) {
+    val (label, color) = when (role) {
+        com.sevengold.signalapp.data.model.Role.ADMIN -> "ADMIN" to MaterialTheme.colorScheme.error
+        com.sevengold.signalapp.data.model.Role.PREMIUM -> "PREMIUM" to MaterialTheme.colorScheme.primary
+        com.sevengold.signalapp.data.model.Role.USER -> "USER" to MaterialTheme.colorScheme.outline
+    }
+    AssistChip(onClick = {}, label = { Text(label) }, colors = AssistChipDefaults.assistChipColors(labelColor = color))
 }

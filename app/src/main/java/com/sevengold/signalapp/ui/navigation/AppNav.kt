@@ -84,11 +84,22 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
             when (currentUser.effectiveRole) {
                 Role.ADMIN -> AdminPanelScreen(adminUid = uid, onLogout = onLogout)
                 Role.PREMIUM -> {
+                    // Subscribe ke topic notif tiap kali layar ini kebuka dgn role PREMIUM aktif.
+                    // subscribeToTopic aman dipanggil berkali-kali (idempotent).
+                    LaunchedEffect(Unit) {
+                        com.sevengold.signalapp.notification.NotificationTopics.subscribeToPremiumSignals()
+                    }
                     val df = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
                     val expiryLabel = currentUser.premiumExpiryMillis?.let { df.format(Date(it)) } ?: "-"
                     PremiumSignalScreen(expiryLabel = expiryLabel, onLogout = onLogout)
                 }
-                Role.USER -> UserSignalScreen(uid = uid, onLogout = onLogout)
+                Role.USER -> {
+                    // Pastikan user yang bukan/tidak lagi PREMIUM gak ke-subscribe (misal expired).
+                    LaunchedEffect(Unit) {
+                        com.sevengold.signalapp.notification.NotificationTopics.unsubscribeFromPremiumSignals()
+                    }
+                    UserSignalScreen(uid = uid, onLogout = onLogout)
+                }
             }
         }
     }

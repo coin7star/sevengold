@@ -32,6 +32,7 @@ class SessionViewModel(
     fun currentUid(): String? = auth.currentUser?.uid
 
     fun logout() {
+        com.sevengold.signalapp.notification.NotificationTopics.unsubscribeFromPremiumSignals()
         auth.signOut()
         _user.value = null
     }
