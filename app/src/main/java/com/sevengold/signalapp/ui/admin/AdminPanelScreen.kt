@@ -24,14 +24,16 @@ import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
+import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.ui.auth.GoldButton
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.common.rupiah
 import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), SUBSCRIPTIONS("Pesanan"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
+    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
 }
 
 @Composable
@@ -80,6 +82,7 @@ fun AdminPanelScreen(
             AdminTab.PUBLISH -> PublishSignalTab(adminUid)
             AdminTab.SIGNALS -> ManageSignalsTab()
             AdminTab.CODES -> ManageCodesTab(adminUid)
+            AdminTab.PACKAGES -> SubscriptionPackagesTab()
             AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
             AdminTab.USERS -> ManageUsersTab()
             AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
@@ -317,6 +320,232 @@ private fun ManageCodesTab(adminUid: String, vm: AdminViewModel = viewModel()) {
  * Panel User Management: admin bisa lihat semua akun (email, role, expiry premium)
  * dan langsung naik/turunin role USER <-> PREMIUM tanpa perlu generate kode dulu.
  */
+
+@Composable
+private fun SubscriptionPackagesTab(vm: AdminViewModel = viewModel()) {
+    val packages by vm.subscriptionPackages.collectAsState()
+    val message by vm.packageMessage.collectAsState()
+    var editing by remember { mutableStateOf<SubscriptionPackage?>(null) }
+    var creating by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            "Paket Langganan",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "Ubah harga, durasi, nama, label, dan status paket langsung dari panel admin. Perubahan berlaku untuk pembelian baru; order lama tetap memakai harga dan durasi yang tersimpan saat checkout.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { creating = true },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("➕ Tambah Paket")
+            }
+        }
+
+        if (message != null) {
+            Text(
+                message ?: "",
+                color = if ((message ?: "").startsWith("Gagal")) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        if (packages.isEmpty()) {
+            Text("Belum ada paket.")
+        }
+
+        packages.sortedBy { it.sortOrder }.forEach { pkg ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(pkg.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "${rupiah(pkg.price)} • ${pkg.durationDays} hari${if (pkg.label.isNotBlank()) " • ${pkg.label}" else ""}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        AssistChip(
+                            onClick = {
+                                val updated = packages.map {
+                                    if (it.id == pkg.id) it.copy(enabled = !it.enabled) else it
+                                }
+                                vm.saveSubscriptionPackages(updated)
+                            },
+                            label = { Text(if (pkg.enabled) "AKTIF" else "NONAKTIF") }
+                        )
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { editing = pkg }) {
+                            Text("Edit")
+                        }
+                        TextButton(
+                            onClick = {
+                                if (packages.size <= 1) {
+                                    // saveSubscriptionPackages akan menolak keadaan kosong; minimal
+                                    // satu paket dipertahankan agar halaman pembelian tidak kosong.
+                                    vm.saveSubscriptionPackages(packages)
+                                } else {
+                                    vm.saveSubscriptionPackages(
+                                        packages.filterNot { it.id == pkg.id }
+                                    )
+                                }
+                            }
+                        ) {
+                            Text("Hapus", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (editing != null) {
+        PackageEditorDialog(
+            initial = editing!!,
+            title = "Edit Paket",
+            onDismiss = { editing = null },
+            onSave = { updated ->
+                vm.saveSubscriptionPackages(
+                    packages.map { if (it.id == updated.id) updated else it }
+                )
+                editing = null
+            }
+        )
+    }
+
+    if (creating) {
+        val newPackage = remember {
+            SubscriptionPackage(
+                id = "pkg_${System.currentTimeMillis()}",
+                name = "",
+                price = 0L,
+                durationDays = 0,
+                label = "",
+                enabled = true,
+                sortOrder = packages.size
+            )
+        }
+        PackageEditorDialog(
+            initial = newPackage,
+            title = "Tambah Paket",
+            onDismiss = { creating = false },
+            onSave = { created ->
+                vm.saveSubscriptionPackages(packages + created)
+                creating = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun PackageEditorDialog(
+    initial: SubscriptionPackage,
+    title: String,
+    onDismiss: () -> Unit,
+    onSave: (SubscriptionPackage) -> Unit
+) {
+    var name by remember(initial.id) { mutableStateOf(initial.name) }
+    var price by remember(initial.id) { mutableStateOf(if (initial.price > 0) initial.price.toString() else "") }
+    var days by remember(initial.id) { mutableStateOf(if (initial.durationDays > 0) initial.durationDays.toString() else "") }
+    var label by remember(initial.id) { mutableStateOf(initial.label) }
+    var enabled by remember(initial.id) { mutableStateOf(initial.enabled) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nama paket") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it.filter(Char::isDigit) },
+                    label = { Text("Harga (Rp)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = days,
+                    onValueChange = { days = it.filter(Char::isDigit) },
+                    label = { Text("Durasi (hari)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text("Label (opsional)") },
+                    placeholder = { Text("BEST VALUE") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Paket aktif")
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        initial.copy(
+                            name = name.trim(),
+                            price = price.toLongOrNull() ?: 0L,
+                            durationDays = days.toIntOrNull() ?: 0,
+                            label = label.trim(),
+                            enabled = enabled
+                        )
+                    )
+                }
+            ) {
+                Text("Simpan")
+            }
+        }
+    )
+}
+
 @Composable
 private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
     val orders by vm.orders.collectAsState()

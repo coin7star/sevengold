@@ -393,3 +393,24 @@ Manual approval now uses the `durationDays` snapshot stored in the order. Approv
 - **History Sinyal** hanya berisi sinyal yang sudah tidak ACTIVE (`BE`, `TP HIT`, `SL HIT`, `CANCELLED`) dan tetap ditampilkan vertikal di bawah.
 - Tampilan ini diterapkan pada **USER dan PREMIUM**.
 - Untuk USER, sinyal aktif maupun history tetap menggunakan tampilan terkunci/blur sesuai role.
+
+
+## Admin Package Manager
+
+Admin Panel sekarang memiliki tab **Paket** untuk mengelola paket langganan tanpa mengubah source code.
+
+Admin dapat:
+- Menambah paket baru
+- Mengubah nama paket
+- Mengubah harga
+- Mengubah durasi Premium (hari)
+- Mengubah label paket
+- Mengaktifkan/nonaktifkan paket
+- Menghapus paket
+
+Konfigurasi paket disimpan di:
+`appSettings/subscriptionPackages`
+
+Perubahan paket hanya berlaku untuk **order baru**. Order yang sudah dibuat tetap menyimpan `packageName`, `price`, dan `durationDays` pada dokumen order sehingga aman jika harga/durasi paket diubah setelah checkout.
+
+Firestore Rules yang ada sudah mengizinkan ADMIN menulis `appSettings`; tidak perlu membuat collection baru untuk Package Manager.

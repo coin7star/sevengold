@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sevengold.signalapp.data.model.SubscriptionCode
 import com.sevengold.signalapp.data.model.ReferralSettings
+import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.data.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,12 @@ class AdminViewModel(
     private val _settingsMessage = MutableStateFlow<String?>(null)
     val settingsMessage: StateFlow<String?> = _settingsMessage
 
+    private val _subscriptionPackages = MutableStateFlow(SubscriptionPackage.defaults())
+    val subscriptionPackages: StateFlow<List<SubscriptionPackage>> = _subscriptionPackages
+
+    private val _packageMessage = MutableStateFlow<String?>(null)
+    val packageMessage: StateFlow<String?> = _packageMessage
+
     private val _lastGeneratedCode = MutableStateFlow<String?>(null)
     val lastGeneratedCode: StateFlow<String?> = _lastGeneratedCode
 
@@ -38,6 +45,11 @@ class AdminViewModel(
                 // Ditangkap di sini supaya tidak nge-crash app (layar putih) pas keluar.
                 .catch { }
                 .collect { _codes.value = it }
+        }
+        viewModelScope.launch {
+            repo.observeSubscriptionPackages()
+                .catch { _packageMessage.value = "Gagal memuat paket: ${it.message ?: "unknown error"}" }
+                .collect { _subscriptionPackages.value = it }
         }
     }
 
@@ -61,4 +73,29 @@ class AdminViewModel(
     }
 
     fun clearSettingsMessage() { _settingsMessage.value = null }
+
+    fun saveSubscriptionPackages(packages: List<SubscriptionPackage>) {
+        val normalized = packages.mapIndexed { index, pkg ->
+            pkg.copy(
+                name = pkg.name.trim(),
+                price = pkg.price.coerceAtLeast(0L),
+                durationDays = pkg.durationDays.coerceAtLeast(0),
+                label = pkg.label.trim(),
+                sortOrder = index
+            )
+        }
+        if (normalized.any { it.name.isBlank() || it.price <= 0L || it.durationDays <= 0 }) {
+            _packageMessage.value = "Nama, harga, dan durasi semua paket harus valid."
+            return
+        }
+        viewModelScope.launch {
+            val result = repo.saveSubscriptionPackages(normalized)
+            _packageMessage.value = result.fold(
+                onSuccess = { "Paket langganan berhasil disimpan" },
+                onFailure = { "Gagal menyimpan paket: ${it.message ?: "unknown error"}" }
+            )
+        }
+    }
+
+    fun clearPackageMessage() { _packageMessage.value = null }
 }

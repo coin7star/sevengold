@@ -4,6 +4,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.sevengold.signalapp.data.model.SubscriptionCode
 import com.sevengold.signalapp.data.model.ReferralSettings
+import com.sevengold.signalapp.data.model.SubscriptionPackage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -15,6 +16,7 @@ class AdminRepository(
 ) {
     private val collection = db.collection("subscriptionCodes")
     private val referralSettingsRef = db.collection("appSettings").document("referral")
+    private val packagesRef = db.collection("appSettings").document("subscriptionPackages")
 
     fun observeCodes(): Flow<List<SubscriptionCode>> = callbackFlow {
         val registration = collection
@@ -43,6 +45,32 @@ class AdminRepository(
 
     suspend fun updateReferralSettings(settings: ReferralSettings): Result<Unit> = runCatching {
         referralSettingsRef.set(settings.toMap()).await()
+    }
+
+
+    fun observeSubscriptionPackages(): Flow<List<SubscriptionPackage>> = callbackFlow {
+        val registration = packagesRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val raw = snapshot?.get("packages") as? List<*>
+            val parsed = raw
+                ?.mapNotNull { item ->
+                    (item as? Map<*, *>)?.entries?.associate { e -> e.key.toString() to e.value }
+                }
+                ?.map { SubscriptionPackage.fromMap(it) }
+                ?.sortedBy { it.sortOrder }
+                ?: SubscriptionPackage.defaults()
+            trySend(parsed)
+        }
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun saveSubscriptionPackages(packages: List<SubscriptionPackage>): Result<Unit> = runCatching {
+        packagesRef.set(
+            mapOf("packages" to packages.sortedBy { it.sortOrder }.map { it.toMap() })
+        ).await()
     }
 
     /** Generate kode acak 8 karakter, misal "K7X9QF2A", lalu simpan ke Firestore. */
