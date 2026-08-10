@@ -80,7 +80,7 @@ fun SignalAppTheme(
     MaterialTheme(
         colorScheme = colors,
         shapes = SignalAppShapes,
-        typography = MaterialTheme.typography.merge(SignalAppTypography),
+        typography = SignalAppTypography,
         content = content
     )
 }

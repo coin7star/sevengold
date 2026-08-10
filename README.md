@@ -12,6 +12,9 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ## Update terbaru
 
+- **Fix error compile setelah UI premium** — dua bug Kotlin yang bikin GitHub Actions gagal build (`compileDebugKotlin FAILED`):
+  1. `PerformanceSummaryCard.kt` — pemanggilan `Modifier.background(...)` di selector periode mencampur tipe `Brush` dan `Color` dalam satu `if/else`, yang bikin compiler bingung pilih overload. Diperbaiki dengan menyamakan tipe (pakai `SolidColor` transparan untuk kondisi tidak terpilih).
+  2. `Theme.kt` — pemakaian `Typography.merge(...)`, yang sebenarnya fungsi Material 2 dan tidak ada di Material 3. Diganti jadi pemakaian langsung `Typography` custom tanpa merge.
 - **UI dibuat lebih premium (gold-on-navy)** — tema warna diganti total dari palet Material default jadi nuansa emas di atas navy gelap ala kartu member VIP. Perubahan meliputi:
   - Halaman **Login & Register**: logo bulat bergradasi emas, card "kaca" gelap dengan shadow, input field dengan ikon, tombol utama emas bergradasi.
   - **Card Performa**: gradient gelap, selector periode custom, angka-angka winrate/pip diberi warna aksen (emas/hijau/merah).

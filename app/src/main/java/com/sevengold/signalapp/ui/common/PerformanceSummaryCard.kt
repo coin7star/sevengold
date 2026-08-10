@@ -98,7 +98,10 @@ private fun PeriodSelector(selected: StatsPeriod, onSelect: (StatsPeriod) -> Uni
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(11.dp))
-                    .background(if (isSelected) SignalGradients.premiumBadge else Color.Transparent)
+                    .background(
+                        if (isSelected) SignalGradients.premiumBadge
+                        else androidx.compose.ui.graphics.SolidColor(Color.Transparent)
+                    )
                     .clickable { onSelect(p) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
