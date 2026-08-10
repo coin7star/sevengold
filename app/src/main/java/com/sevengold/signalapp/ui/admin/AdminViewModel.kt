@@ -6,6 +6,7 @@ import com.sevengold.signalapp.data.model.SubscriptionCode
 import com.sevengold.signalapp.data.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class AdminViewModel(
@@ -20,7 +21,11 @@ class AdminViewModel(
 
     init {
         viewModelScope.launch {
-            repo.observeCodes().collect { _codes.value = it }
+            repo.observeCodes()
+                // Kalau user logout, Firestore balikin error permission-denied ke listener ini.
+                // Ditangkap di sini supaya tidak nge-crash app (layar putih) pas keluar.
+                .catch { }
+                .collect { _codes.value = it }
         }
     }
 

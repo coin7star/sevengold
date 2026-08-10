@@ -7,6 +7,7 @@ import com.sevengold.signalapp.data.model.Role
 import com.sevengold.signalapp.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class UserManagementViewModel(
@@ -21,7 +22,11 @@ class UserManagementViewModel(
 
     init {
         viewModelScope.launch {
-            repo.observeAllUsers().collect { _users.value = it }
+            repo.observeAllUsers()
+                // Kalau user logout, Firestore balikin error permission-denied ke listener ini.
+                // Ditangkap di sini supaya tidak nge-crash app (layar putih) pas keluar.
+                .catch { }
+                .collect { _users.value = it }
         }
     }
 

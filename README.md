@@ -10,6 +10,13 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## Update terbaru
+
+- **Menu Profil untuk ADMIN, PREMIUM, dan USER** — tiap role sekarang punya tab/menu "Profil" (Admin: tab ke-5 di Admin Panel; Premium & User: bottom navigation "Sinyal"/"Profil") yang menampilkan email, role aktif, tanggal premium expired (untuk Premium), tanggal bergabung, dan tombol **Keluar dari Akun** yang jelas.
+- **Fix bug tombol "Keluar" (logout) yang bikin app crash/layar putih** — sebelumnya, semua listener real-time ke Firestore (data user, daftar sinyal, daftar kode, daftar semua user di panel Admin) tetap aktif sesaat setelah sesi login diputus. Firestore lalu membalas listener-listener itu dengan error *permission-denied*, dan error itu tidak ditangkap sehingga bikin aplikasi crash sebelum sempat pindah ke halaman Login (baru bisa login lagi setelah app ditutup manual dari recent apps). Sekarang semua listener tersebut menangkap error itu dengan aman, jadi begitu tombol **Keluar** dipencet, aplikasi langsung balik ke menu Login dari role ADMIN/PREMIUM/USER tanpa nge-freeze/crash.
+
+---
+
 ## 1. Setup Firebase
 
 1. Buka https://console.firebase.google.com → **Add project** → beri nama bebas (mis. `signal-app`).

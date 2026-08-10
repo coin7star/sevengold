@@ -7,6 +7,7 @@ import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.repository.SignalRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class SignalListViewModel(
@@ -18,7 +19,11 @@ class SignalListViewModel(
 
     init {
         viewModelScope.launch {
-            repo.observeSignals().collect { _signals.value = it }
+            repo.observeSignals()
+                // Kalau user logout, Firestore balikin error permission-denied ke listener ini.
+                // Ditangkap di sini supaya tidak nge-crash app (layar putih) pas keluar.
+                .catch { }
+                .collect { _signals.value = it }
         }
     }
 
