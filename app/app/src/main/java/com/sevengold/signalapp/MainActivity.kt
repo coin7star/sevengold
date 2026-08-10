@@ -1,0 +1,50 @@
+package com.sevengold.signalapp
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import com.sevengold.signalapp.notification.NotificationTopics
+import com.sevengold.signalapp.ui.navigation.AppNav
+import com.sevengold.signalapp.ui.theme.SignalAppTheme
+
+class MainActivity : ComponentActivity() {
+
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* Kalau ditolak, notif cuma gak akan muncul — sisa fitur app tetap jalan normal. */ }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        NotificationTopics.createChannelIfNeeded(this)
+        askNotificationPermissionIfNeeded()
+
+        setContent {
+            SignalAppTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    AppNav()
+                }
+            }
+        }
+    }
+
+    /** Android 13+ (API 33) wajib minta izin runtime dulu sebelum notifikasi bisa muncul. */
+    private fun askNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+}
