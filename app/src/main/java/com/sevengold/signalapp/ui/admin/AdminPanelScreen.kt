@@ -329,7 +329,7 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Saat APPROVED, Cloud Function otomatis menambah durasi dan mengubah USER menjadi PREMIUM.",
+            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Saat APPROVED, akun langsung diproses menjadi PREMIUM dan durasinya ditambahkan.",
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -353,7 +353,15 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
                             }
                             Text("${order.email.ifBlank { order.uid }} • +${order.durationDays} hari")
                             if (order.discountPercent > 0) {
-                                Text("Voucher ${order.discountPercent}% → ${com.sevengold.signalapp.ui.common.rupiah(order.price)}", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    "Harga ${com.sevengold.signalapp.ui.common.rupiah(order.originalPrice)} → diskon ${order.discountPercent}% → bayar ${com.sevengold.signalapp.ui.common.rupiah(order.price)}",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            } else {
+                                Text(
+                                    "Total bayar: ${com.sevengold.signalapp.ui.common.rupiah(order.price)}",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                             Text("Order: ${order.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Status: MENUNGGU PEMBAYARAN / APPROVAL", style = MaterialTheme.typography.labelSmall)

@@ -351,3 +351,12 @@ Jika function belum pernah aktif di Firebase, workflow deploy di atas akan menga
 - Referral welcome voucher is now a real discount voucher: user enters the voucher before buying a package, the order stores original price, discount percent, discount amount, and final price.
 - Voucher is consumed only when the order is approved. Rejected orders do not consume it.
 - Premium purchases extend the current expiry; they never reset an active subscription.
+
+
+## Fix V6 - Voucher & Approval
+
+- Harga voucher sekarang terlihat langsung di layar user sebelum membeli: harga normal → diskon → total bayar.
+- Voucher hanya menjadi diskon; tidak memberikan Premium secara langsung.
+- Admin approval tidak lagi menolak order lama hanya karena harga paket di katalog sudah berubah. Validasi approval menggunakan `packageId` + `durationDays`; nominal tetap diverifikasi admin secara manual sebelum APPROVE.
+- Panel Pesanan menampilkan harga normal, diskon, dan total yang harus dibayar.
+- Order yang sama tetap idempotent dan tidak dapat diberi Premium dua kali.

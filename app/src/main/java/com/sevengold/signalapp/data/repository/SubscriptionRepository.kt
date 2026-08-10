@@ -86,18 +86,20 @@ class SubscriptionRepository(private val db: FirebaseFirestore = FirebaseFiresto
                     .coerceIn(1L, 3650L)
                 val durationMillis = durationDays * 24L * 60L * 60L * 1000L
 
-                // Admin approval tetap memvalidasi paket agar order hasil manipulasi client
-                // tidak bisa mendapat durasi/harga yang tidak ada di katalog.
+                // Approval manual: identitas paket + durasi harus cocok dengan katalog aktif.
+                // Harga TIDAK dibandingkan lagi dengan order lama karena admin bisa mengubah
+                // harga paket setelah order dibuat. Untuk pembayaran manual, admin tetap
+                // memverifikasi nominal transfer sebelum menekan APPROVE.
                 val packageId = order["packageId"] as? String ?: error("Paket pesanan tidak valid")
-                val configuredPackages = packageSnap?.get("packages") as? List<*>
-                val configuredPackage = configuredPackages?.mapNotNull { it as? Map<*, *> }
+                val configuredPackages = packageSnap.get("packages") as? List<*>
+                val configuredPackage = configuredPackages
+                    ?.mapNotNull { it as? Map<*, *> }
                     ?.firstOrNull { pkg ->
                         pkg["id"] == packageId &&
                             pkg["enabled"] != false &&
-                            (pkg["price"] as? Number)?.toLong() == ((order["originalPrice"] ?: order["price"]) as? Number)?.toLong() &&
                             (pkg["durationDays"] as? Number)?.toLong() == durationDays
                     }
-                if (configuredPackage == null) error("Paket sudah berubah atau tidak valid")
+                if (configuredPackage == null) error("Paket tidak ditemukan / sudah dinonaktifkan")
 
                 val currentExpiry = (user["premiumExpiryMillis"] as? Number)?.toLong() ?: 0L
                 val base = if (currentExpiry > now) currentExpiry else now

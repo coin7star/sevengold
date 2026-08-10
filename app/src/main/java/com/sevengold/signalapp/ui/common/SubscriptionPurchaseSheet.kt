@@ -90,6 +90,16 @@ fun SubscriptionPurchaseSheet(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    if (voucherCode.isNotBlank()) {
+                        Text(
+                            if (voucherCode.trim().equals(user.welcomeVoucherCode.trim(), ignoreCase = true) && !user.welcomeVoucherUsed && user.welcomeVoucherPercent > 0)
+                                "✓ Voucher valid — harga paket akan otomatis dipotong ${user.welcomeVoucherPercent}%"
+                            else
+                                "Voucher tidak valid / sudah digunakan",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (voucherCode.trim().equals(user.welcomeVoucherCode.trim(), ignoreCase = true) && !user.welcomeVoucherUsed && user.welcomeVoucherPercent > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
             if (orders.any { it.status == SubscriptionOrderStatus.PENDING }) {
@@ -109,13 +119,32 @@ fun SubscriptionPurchaseSheet(
                             Text(pkg.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             if (pkg.label.isNotBlank()) AssistChip(onClick = {}, label = { Text(pkg.label) })
                         }
-                        Text(rupiah(pkg.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        val normalizedVoucher = voucherCode.trim().uppercase()
+                        val voucherValid = normalizedVoucher.isNotBlank() &&
+                            normalizedVoucher == user.welcomeVoucherCode.trim().uppercase() &&
+                            user.welcomeVoucherPercent > 0 &&
+                            !user.welcomeVoucherUsed
+                        val discountPercent = if (voucherValid) user.welcomeVoucherPercent.coerceIn(0, 100) else 0
+                        val discountAmount = (pkg.price * discountPercent) / 100L
+                        val finalPrice = (pkg.price - discountAmount).coerceAtLeast(0L)
+
+                        if (voucherValid) {
+                            Text(
+                                "${rupiah(pkg.price)} → diskon ${discountPercent}% → ${rupiah(finalPrice)}",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text("Hemat ${rupiah(discountAmount)}", style = MaterialTheme.typography.labelSmall)
+                        } else {
+                            Text(rupiah(pkg.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        }
                         Text("Aktif +${pkg.durationDays} hari Premium", style = MaterialTheme.typography.bodySmall)
                         Button(
-                            onClick = { onBuy(pkg, voucherCode.trim()) },
+                            onClick = { onBuy(pkg, if (voucherValid) normalizedVoucher else "") },
                             enabled = !orders.any { it.status == SubscriptionOrderStatus.PENDING },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Beli Paket") }
+                        ) { Text("Beli Paket • ${rupiah(finalPrice)}") }
                     }
                 }
             }
