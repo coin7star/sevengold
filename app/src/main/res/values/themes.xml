@@ -1,3 +1,9 @@
 <resources>
-    <style name="Theme.SignalApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Base window jadi navy gelap (bukan putih polos) biar gak ada "flash" putih
+         sebelum Compose render tema premium gold-on-navy di dalam app. -->
+    <style name="Theme.SignalApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
+    </style>
 </resources>

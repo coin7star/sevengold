@@ -6,16 +6,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Role
+import com.sevengold.signalapp.ui.theme.DangerRed
+import com.sevengold.signalapp.ui.theme.GoldLight
+import com.sevengold.signalapp.ui.theme.SignalGradients
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,81 +46,111 @@ fun ProfileScreen(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Box(
             modifier = Modifier
-                .size(72.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                .size(88.dp)
+                .shadow(16.dp, CircleShape, ambientColor = Color(0xFFD4AF62), spotColor = Color(0xFFD4AF62))
+                .clip(CircleShape)
+                .background(SignalGradients.avatarRing),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = user.email.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = user.email.ifBlank { "(tanpa email)" },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(6.dp))
-        ProfileRoleBadge(user.effectiveRole)
-
-        Spacer(Modifier.height(24.dp))
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                ProfileInfoRow("Role aktif", roleLabel(user.effectiveRole))
-
-                if (user.effectiveRole == Role.PREMIUM) {
-                    Spacer(Modifier.height(10.dp))
-                    val expiry = user.premiumExpiryMillis?.let { df.format(Date(it)) } ?: "-"
-                    ProfileInfoRow("Premium sampai", expiry)
-                }
-
-                if (user.role == Role.PREMIUM && user.effectiveRole == Role.USER) {
-                    Spacer(Modifier.height(10.dp))
-                    ProfileInfoRow("Status", "Premium sudah habis")
-                }
-
-                Spacer(Modifier.height(10.dp))
-                ProfileInfoRow(
-                    "Bergabung sejak",
-                    if (user.createdAt > 0) df.format(Date(user.createdAt)) else "-"
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = user.email.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = GoldLight
                 )
             }
         }
 
         Spacer(Modifier.height(16.dp))
+        Text(
+            text = user.email.ifBlank { "(tanpa email)" },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+        ProfileRoleBadge(user.effectiveRole)
+
+        Spacer(Modifier.height(28.dp))
+
+        InfoCard {
+            ProfileInfoRow("Role aktif", roleLabel(user.effectiveRole))
+
+            if (user.effectiveRole == Role.PREMIUM) {
+                Spacer(Modifier.height(12.dp))
+                val expiry = user.premiumExpiryMillis?.let { df.format(Date(it)) } ?: "-"
+                ProfileInfoRow("Premium sampai", expiry)
+            }
+
+            if (user.role == Role.PREMIUM && user.effectiveRole == Role.USER) {
+                Spacer(Modifier.height(12.dp))
+                ProfileInfoRow("Status", "Premium sudah habis")
+            }
+
+            Spacer(Modifier.height(12.dp))
+            ProfileInfoRow(
+                "Bergabung sejak",
+                if (user.createdAt > 0) df.format(Date(user.createdAt)) else "-"
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         // Penjelasan singkat per-role, supaya user awam tidak bingung fitur apa yang dia punya.
-        Card(
-            Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Tentang role kamu", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(6.dp))
-                Text(roleDescription(user.effectiveRole), style = MaterialTheme.typography.bodySmall)
-            }
+        InfoCard(accentText = true) {
+            Text("TENTANG ROLE KAMU", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                roleDescription(user.effectiveRole),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Spacer(Modifier.height(28.dp))
 
-        OutlinedButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0x1AE5657A))
+                .padding(vertical = 2.dp)
         ) {
-            Text("Keluar dari Akun")
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
+            ) {
+                Text("Keluar dari Akun", fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(Modifier.height(12.dp))
     }
+}
+
+@Composable
+private fun InfoCard(accentText: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(10.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (accentText) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
+            .padding(18.dp),
+        content = content
+    )
 }
 
 @Composable
@@ -130,7 +167,7 @@ private fun ProfileInfoRow(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -138,11 +175,18 @@ private fun ProfileInfoRow(label: String, value: String) {
 @Composable
 private fun ProfileRoleBadge(role: Role) {
     val (label, color) = when (role) {
-        Role.ADMIN -> "ADMIN" to MaterialTheme.colorScheme.error
-        Role.PREMIUM -> "PREMIUM" to MaterialTheme.colorScheme.primary
+        Role.ADMIN -> "ADMIN" to DangerRed
+        Role.PREMIUM -> "PREMIUM" to GoldLight
         Role.USER -> "USER" to MaterialTheme.colorScheme.outline
     }
-    AssistChip(onClick = {}, label = { Text(label) }, colors = AssistChipDefaults.assistChipColors(labelColor = color))
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.16f))
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Text(label, color = color, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+    }
 }
 
 private fun roleLabel(role: Role): String = when (role) {

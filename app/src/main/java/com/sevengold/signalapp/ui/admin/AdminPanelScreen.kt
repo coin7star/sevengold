@@ -2,25 +2,37 @@
 
 package com.sevengold.signalapp.ui.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
+import com.sevengold.signalapp.ui.auth.GoldButton
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.theme.DangerRed
+import com.sevengold.signalapp.ui.theme.GoldPrimary
 
-private enum class AdminTab { PUBLISH, SIGNALS, CODES, USERS, PROFILE }
+private enum class AdminTab(val label: String) {
+    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), USERS("Users"), PROFILE("Profil")
+}
 
 @Composable
 fun AdminPanelScreen(
@@ -30,20 +42,36 @@ fun AdminPanelScreen(
 ) {
     var tab by remember { mutableStateOf(AdminTab.PUBLISH) }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("Admin Panel") },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = GoldPrimary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Admin Panel", fontWeight = FontWeight.Bold)
+                }
+            },
             actions = {
-                TextButton(onClick = onLogout) { Text("Keluar") }
-            }
+                TextButton(onClick = onLogout) { Text("Keluar", color = DangerRed) }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
         )
 
-        TabRow(selectedTabIndex = tab.ordinal) {
-            Tab(selected = tab == AdminTab.PUBLISH, onClick = { tab = AdminTab.PUBLISH }, text = { Text("Publish") })
-            Tab(selected = tab == AdminTab.SIGNALS, onClick = { tab = AdminTab.SIGNALS }, text = { Text("Sinyal") })
-            Tab(selected = tab == AdminTab.CODES, onClick = { tab = AdminTab.CODES }, text = { Text("Kode") })
-            Tab(selected = tab == AdminTab.USERS, onClick = { tab = AdminTab.USERS }, text = { Text("Users") })
-            Tab(selected = tab == AdminTab.PROFILE, onClick = { tab = AdminTab.PROFILE }, text = { Text("Profil") })
+        ScrollableTabRow(
+            selectedTabIndex = tab.ordinal,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = GoldPrimary,
+            edgePadding = 16.dp
+        ) {
+            AdminTab.values().forEach { t ->
+                Tab(
+                    selected = tab == t,
+                    onClick = { tab = t },
+                    text = { Text(t.label, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal) },
+                    selectedContentColor = GoldPrimary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         when (tab) {
@@ -144,7 +172,9 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
             Spacer(Modifier.height(8.dp))
         }
 
-        Button(
+        GoldButton(
+            text = "Publish Sinyal",
+            loading = false,
             onClick = {
                 val signal = Signal(
                     type = type,
@@ -163,11 +193,9 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
                         "Gagal: $err"
                     }
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Publish Sinyal")
-        }
+            }
+        )
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -253,7 +281,17 @@ private fun ManageCodesTab(adminUid: String, vm: AdminViewModel = viewModel()) {
 
         if (lastCode != null) {
             Spacer(Modifier.height(12.dp))
-            Text("Kode baru: $lastCode", style = MaterialTheme.typography.titleLarge)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(14.dp)
+            ) {
+                Text("KODE BARU", style = MaterialTheme.typography.labelMedium, color = GoldPrimary)
+                Spacer(Modifier.height(2.dp))
+                Text("$lastCode", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = GoldPrimary)
+            }
         }
 
         Spacer(Modifier.height(16.dp))

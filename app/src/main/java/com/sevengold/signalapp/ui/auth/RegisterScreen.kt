@@ -1,13 +1,23 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.sevengold.signalapp.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockReset
+import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sevengold.signalapp.ui.theme.SignalGradients
 
 @Composable
 fun RegisterScreen(
@@ -24,65 +34,83 @@ fun RegisterScreen(
         if (state.success) onRegisterSuccess()
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(SignalGradients.screenBackground)
     ) {
-        Text("Buat Akun Baru", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password (min. 6 karakter)") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = confirm,
-            onValueChange = { confirm = it },
-            label = { Text("Konfirmasi Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(20.dp))
-
-        if (state.error != null) {
-            Text(state.error ?: "", color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(12.dp))
-        }
-
-        Button(
-            onClick = { viewModel.register(email, password, confirm) },
-            enabled = !state.loading,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.loading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-            } else {
-                Text("Daftar")
-            }
-        }
+            BrandMark()
 
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onGoToLogin) {
-            Text("Sudah punya akun? Masuk")
+            Spacer(Modifier.height(36.dp))
+
+            AuthCard {
+                Text(
+                    "Buat Akun Baru",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Gabung dan pantau sinyal XAUUSD real-time",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(24.dp))
+
+                PremiumTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = "Email",
+                    leadingIcon = Icons.Filled.Mail,
+                    keyboardType = KeyboardType.Email
+                )
+                Spacer(Modifier.height(14.dp))
+
+                PremiumTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password (min. 6 karakter)",
+                    leadingIcon = Icons.Filled.Lock,
+                    isPassword = true
+                )
+                Spacer(Modifier.height(14.dp))
+
+                PremiumTextField(
+                    value = confirm,
+                    onValueChange = { confirm = it },
+                    label = "Konfirmasi Password",
+                    leadingIcon = Icons.Filled.LockReset,
+                    isPassword = true
+                )
+
+                if (state.error != null) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        state.error ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+                GoldButton(
+                    text = "Daftar",
+                    loading = state.loading,
+                    onClick = { viewModel.register(email, password, confirm) }
+                )
+
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onGoToLogin, modifier = Modifier.fillMaxWidth()) {
+                    Text("Sudah punya akun? Masuk", color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
     }
 }

@@ -6,15 +6,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +28,9 @@ import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.theme.GoldLight
+import com.sevengold.signalapp.ui.theme.GoldPrimary
+import com.sevengold.signalapp.ui.theme.SignalGradients
 
 private enum class UserTab { SIGNALS, PROFILE }
 
@@ -55,52 +62,56 @@ fun UserSignalScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(if (tab == UserTab.SIGNALS) "Sinyal XAUUSD" else "Profil") },
-                actions = { TextButton(onClick = onLogout) { Text("Keluar") } }
+                title = {
+                    Text(
+                        if (tab == UserTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                actions = { TextButton(onClick = onLogout) { Text("Keluar", color = MaterialTheme.colorScheme.error) } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 NavigationBarItem(
                     selected = tab == UserTab.SIGNALS,
                     onClick = { tab = UserTab.SIGNALS },
                     icon = { Icon(Icons.Filled.ShowChart, contentDescription = null) },
-                    label = { Text("Sinyal") }
+                    label = { Text("Sinyal") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = GoldPrimary,
+                        selectedTextColor = GoldPrimary,
+                        indicatorColor = Color(0x33D4AF62)
+                    )
                 )
                 NavigationBarItem(
                     selected = tab == UserTab.PROFILE,
                     onClick = { tab = UserTab.PROFILE },
                     icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                    label = { Text("Profil") }
+                    label = { Text("Profil") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = GoldPrimary,
+                        selectedTextColor = GoldPrimary,
+                        indicatorColor = Color(0x33D4AF62)
+                    )
                 )
             }
         }
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
             when (tab) {
-                UserTab.SIGNALS -> Column(Modifier.fillMaxSize()) {
-                    PerformanceSummaryCard(signals = signals, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Kamu belum berlangganan Premium", fontWeight = FontWeight.Bold)
-                            Text("Redeem kode dari admin untuk membuka semua sinyal secara penuh.")
-                            Spacer(Modifier.height(10.dp))
-                            Button(onClick = { showRedeemSheet = true }) { Text("Masukkan Kode Langganan") }
-                        }
-                    }
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(top = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(signals) { signal -> LockedSignalCard(signal) }
-                    }
+                UserTab.SIGNALS -> LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                ) {
+                    item { PerformanceSummaryCard(signals = signals) }
+                    item { UpsellCard(onUpgrade = { showRedeemSheet = true }) }
+                    items(signals) { signal -> LockedSignalCard(signal) }
                 }
                 UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
             }
@@ -110,13 +121,14 @@ fun UserSignalScreen(
     if (showRedeemSheet) {
         ModalBottomSheet(onDismissRequest = { showRedeemSheet = false }) {
             Column(Modifier.padding(20.dp)) {
-                Text("Masukkan Kode Langganan", style = MaterialTheme.typography.titleMedium)
+                Text("Masukkan Kode Langganan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
                     label = { Text("Kode") },
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (redeemState.error != null) {
@@ -124,13 +136,11 @@ fun UserSignalScreen(
                     Text(redeemState.error ?: "", color = MaterialTheme.colorScheme.error)
                 }
                 Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = { redeemVm.redeem(uid, code) },
-                    enabled = !redeemState.loading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (redeemState.loading) "Memproses..." else "Aktifkan")
-                }
+                com.sevengold.signalapp.ui.auth.GoldButton(
+                    text = if (redeemState.loading) "Memproses..." else "Aktifkan",
+                    loading = redeemState.loading,
+                    onClick = { redeemVm.redeem(uid, code) }
+                )
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -138,31 +148,78 @@ fun UserSignalScreen(
 }
 
 @Composable
-private fun LockedSignalCard(signal: Signal) {
-    Box {
-        Card(Modifier.fillMaxWidth().alpha(0.5f)) {
-            Column(Modifier.padding(14.dp)) {
-                Text("${signal.type} ${signal.pair}", fontWeight = FontWeight.Bold)
-                Text("Entry: •••••")
-                Text("TP: •••••")
-                Text("SL: •••••")
+private fun UpsellCard(onUpgrade: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(14.dp, RoundedCornerShape(20.dp), ambientColor = Color(0xFFD4AF62))
+            .clip(RoundedCornerShape(20.dp))
+            .background(SignalGradients.goldButton)
+            .padding(18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = Color(0xFF241A02))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Kamu belum berlangganan Premium",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF241A02),
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Redeem kode dari admin untuk membuka semua sinyal secara penuh — Entry, TP, dan SL.",
+            color = Color(0xFF3A2E10),
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(14.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF241A02))
+        ) {
+            TextButton(onClick = onUpgrade) {
+                Text("Masukkan Kode Langganan", color = GoldLight, fontWeight = FontWeight.Bold)
             }
         }
-        Box(
+    }
+}
+
+@Composable
+private fun LockedSignalCard(signal: Signal) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
             Modifier
-                .matchParentSize()
-                .background(Color.Transparent),
+                .padding(16.dp)
+                .blur(6.dp)
+        ) {
+            Text("${signal.type} ${signal.pair}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text("Entry: 2 3•4.5•", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("TP: 23•6.••", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("SL: 23•2.••", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box(
+            Modifier.matchParentSize(),
             contentAlignment = Alignment.Center
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(SignalGradients.premiumBadge)
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
             ) {
-                Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = Color(0xFF241A02), modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Khusus Premium", style = MaterialTheme.typography.labelMedium)
+                Text("Khusus Premium", style = MaterialTheme.typography.labelMedium, color = Color(0xFF241A02), fontWeight = FontWeight.Bold)
             }
         }
     }
