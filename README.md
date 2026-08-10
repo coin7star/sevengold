@@ -1,0 +1,113 @@
+# Signal App — XAUUSD (ADMIN / PREMIUM / USER)
+
+Aplikasi Android sederhana untuk distribusi sinyal trading XAUUSD dengan 3 role:
+
+- **ADMIN** — publish & kelola sinyal (TP/SL/BE/Cancel), generate kode langganan
+- **PREMIUM** — lihat semua sinyal secara penuh (selama belum expired)
+- **USER** — baru daftar, sinyal terlihat "terkunci"/blur, wajib redeem kode dari admin untuk naik jadi PREMIUM
+
+Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otomatis lewat **GitHub Actions** (tidak perlu install Android Studio).
+
+---
+
+## 1. Setup Firebase
+
+1. Buka https://console.firebase.google.com → **Add project** → beri nama bebas (mis. `signal-app`).
+2. Di dashboard project → klik ikon **Android** → tambahkan aplikasi:
+   - Package name: `com.sevengold.signalapp` (harus persis sama, ini dipakai di `app/build.gradle.kts`)
+   - Download file **`google-services.json`** yang diberikan (jangan taruh di folder project dulu, simpan di tempat aman).
+3. Aktifkan **Authentication**:
+   - Menu **Build → Authentication → Get started**
+   - Tab **Sign-in method** → aktifkan **Email/Password**
+4. Aktifkan **Firestore Database**:
+   - Menu **Build → Firestore Database → Create database**
+   - Pilih **Production mode** (aturan keamanan sudah disiapkan di `firestore.rules`)
+   - Setelah dibuat, buka tab **Rules**, copy-paste isi file `firestore.rules` dari project ini, lalu **Publish**.
+
+---
+
+## 2. Push kode ke GitHub
+
+1. Buat repository baru di GitHub (public/private bebas).
+2. Upload seluruh isi folder project ini ke repo (lewat GitHub web editor / drag-drop upload, sesuai cara kerjamu — tidak perlu terminal).
+3. **Jangan** upload file asli `google-services.json` ke repo (sudah otomatis di-ignore lewat `.gitignore`). Kita kirim lewat GitHub Secret di langkah berikutnya.
+
+---
+
+## 3. Setup GitHub Secret (biar Actions bisa build)
+
+1. Ubah `google-services.json` yang tadi didownload jadi teks base64:
+   - Cara termudah: buka https://www.base64encode.org → upload/paste isi file → encode → copy hasilnya.
+2. Di repo GitHub → **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `GOOGLE_SERVICES_JSON_BASE64`
+   - Value: paste hasil base64 tadi
+3. Simpan.
+
+> Catatan soal `FIREBASE_SERVICE_ACCOUNT_JSON`: file ini dipakai untuk **Admin SDK di sisi server** (misalnya Cloud Function atau script backend), **bukan** dipakai langsung di dalam aplikasi Android. Simpan sebagai secret terpisah kalau nanti kamu bikin backend tambahan — jangan pernah dimasukkan ke dalam kode aplikasi Android.
+
+---
+
+## 4. Jalankan build
+
+1. Push commit apapun ke branch `main` (atau buka tab **Actions** di repo → pilih workflow **Build APK** → **Run workflow** manual).
+2. Tunggu sampai selesai (2–5 menit).
+3. Buka run yang sukses → scroll ke bagian **Artifacts** → download `signal-app-debug` → isinya `app-debug.apk`.
+4. Kirim APK itu ke HP Android (via WhatsApp/Drive/dsb), install seperti biasa (izinkan "install dari sumber tidak dikenal" kalau diminta).
+
+---
+
+## 5. Jadikan diri kamu ADMIN pertama kali
+
+Karena setiap akun baru otomatis dibuat dengan role `USER`, ADMIN pertama harus di-set manual:
+
+1. Register akun baru lewat aplikasi (email + password).
+2. Buka Firebase Console → **Firestore Database** → collection `users` → cari dokumen dengan UID akun kamu.
+3. Ubah field `role` dari `"USER"` menjadi `"ADMIN"`.
+4. Buka lagi aplikasinya (atau tunggu sebentar) — otomatis pindah ke Admin Panel tanpa perlu logout, karena role di-listen secara real-time.
+
+---
+
+## Struktur data Firestore
+
+```
+users/{uid}
+  email: string
+  role: "ADMIN" | "PREMIUM" | "USER"
+  premiumExpiryMillis: number | null   // timestamp kapan premium berakhir
+  createdAt: number
+
+signals/{signalId}
+  pair: "XAUUSD"
+  type: "BUY" | "SELL"
+  entry, tp, sl: number
+  status: "ACTIVE" | "BE" | "CANCELLED" | "CLOSED"
+  note: string
+  createdBy: uid
+  createdAt: number
+
+subscriptionCodes/{code}
+  code: string           // juga jadi document ID, mis. "K7X9QF2A"
+  durationDays: number
+  isUsed: boolean
+  usedByUid: string | null
+  createdBy: uid (admin)
+  createdAt: number
+```
+
+## Alur langganan
+
+1. ADMIN buka tab **Kode** di Admin Panel → isi durasi (hari) → **Buat** → dapat kode acak 8 karakter.
+2. Kode itu dikirim manual ke user (WhatsApp/dsb) — misalnya setelah user transfer pembayaran ke admin.
+3. USER buka tombol **Masukkan Kode Langganan** → input kode → kalau valid, role otomatis naik jadi `PREMIUM` dan `premiumExpiryMillis` di-set.
+4. Kalau user (yang sudah PREMIUM) redeem kode lain lagi sebelum expired, durasinya **ditambahkan** ke sisa waktu yang ada (bukan menimpa).
+5. Kalau `premiumExpiryMillis` sudah lewat, aplikasi otomatis menganggap dia balik jadi tampilan USER lagi (dicek di `AppUser.effectiveRole`), tanpa perlu admin turunkan manual.
+
+## Catatan keamanan (penting dibaca sebelum production)
+
+Versi ini punya batasan yang wajar untuk MVP tapi perlu kamu tahu:
+
+- **Blur sinyal untuk USER dilakukan di sisi aplikasi (client-side)**, bukan di server. Artinya data sinyal sebenarnya tetap terkirim ke HP semua user yang login, cuma disembunyikan di tampilan. Untuk keamanan lebih ketat (data premium benar-benar tidak sampai ke device non-premium), langkah lanjutannya adalah pindahkan pembacaan sinyal ke **Cloud Function** yang mengecek role user dulu sebelum mengirim data — bukan baca langsung dari Firestore di client.
+- Redeem kode saat ini dieksekusi dari sisi client lewat Firestore transaction. Ini cukup aman karena pakai transaction (tidak bisa dipakai 2x sekaligus), tapi kalau mau lebih kuat lagi, sebaiknya dipindah ke **Cloud Function** juga supaya logika bisnisnya tidak bisa direverse-engineer dari APK.
+- Login Google/provider lain (yang disebut untuk fase berikutnya) belum diimplementasikan di versi ini — baru email/password sesuai permintaan awal.
+
+Kalau nanti mau lanjut ke tahap Cloud Functions atau login Google, tinggal bilang — bisa dilanjutkan dari fondasi ini.

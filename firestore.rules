@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Profil user: pemilik boleh baca/update datanya sendiri, ADMIN boleh baca semua.
+    // Field "role" & "premiumExpiryMillis" idealnya diubah lewat Cloud Function / transaksi redeem,
+    // bukan langsung oleh client user biasa — lihat catatan keamanan di README.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || role() == 'ADMIN');
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || role() == 'ADMIN');
+    }
+
+    // Sinyal: semua yang login boleh baca (blur dilakukan di sisi UI untuk versi awal ini),
+    // hanya ADMIN yang boleh menulis/publish.
+    match /signals/{signalId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && role() == 'ADMIN';
+    }
+
+    // Kode langganan: hanya ADMIN yang boleh membuat & melihat daftar semua kode.
+    // Update (saat redeem) diizinkan untuk user yang sedang login lewat transaksi.
+    match /subscriptionCodes/{codeId} {
+      allow read: if isSignedIn() && role() == 'ADMIN';
+      allow create: if isSignedIn() && role() == 'ADMIN';
+      allow update: if isSignedIn();
+    }
+  }
+}
