@@ -418,3 +418,11 @@ Firestore Rules yang ada sudah mengizinkan ADMIN menulis `appSettings`; tidak pe
 
 ## UI Paket Langganan (V14)
 Ringkasan paket pada banner Premium kini memakai grid 2 kolom yang lebih rapi. Setiap paket ditampilkan sebagai kartu kecil berisi nama, harga, durasi, dan label. Jika jumlah paket ganjil, kartu terakhir tetap tersusun rapi tanpa melebar penuh.
+
+
+## V15 — Preview Paket Lebih Ringkas
+- Section Perpanjang/Upgrade Premium sekarang hanya menampilkan maksimal 2 paket aktif.
+- Paket berlabel promo/diskon/sale/best value diprioritaskan.
+- Jika tidak ada label promo, paket dengan harga per hari Premium paling rendah diprioritaskan.
+- Tombol **Lihat Semua Paket & Beli** tetap membuka seluruh paket aktif.
+- Admin tetap dapat mengelola semua paket dari Admin Panel > Paket Langganan.

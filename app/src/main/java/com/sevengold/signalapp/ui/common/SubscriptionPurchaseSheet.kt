@@ -45,22 +45,36 @@ fun SubscriptionBanner(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Tampilkan paket sebagai grid 2 kolom agar rapi, termasuk saat
-            // jumlah paket ganjil (kartu terakhir tidak dipaksa memenuhi satu baris).
-            packages.chunked(2).forEach { rowPackages ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    rowPackages.forEach { pkg ->
-                        PackageMini(
-                            pkg = pkg,
-                            modifier = Modifier.weight(1f)
-                        )
+            // Preview hanya menampilkan maksimal 2 paket agar banner tidak penuh.
+            // Paket berlabel promo/rekomendasi diprioritaskan; sisanya dipilih
+            // berdasarkan value (harga per hari Premium yang lebih rendah).
+            val previewPackages = packages
+                .filter { it.enabled && it.durationDays > 0 && it.price >= 0L }
+                .sortedWith(
+                    compareByDescending<SubscriptionPackage> {
+                        val label = it.label.lowercase()
+                        label.contains("diskon") ||
+                            label.contains("sale") ||
+                            label.contains("promo") ||
+                            label.contains("best")
                     }
-                    if (rowPackages.size == 1) {
-                        Spacer(Modifier.weight(1f))
-                    }
+                        .thenBy { it.price.toDouble() / it.durationDays.toDouble() }
+                        .thenBy { it.sortOrder }
+                )
+                .take(2)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                previewPackages.forEach { pkg ->
+                    PackageMini(
+                        pkg = pkg,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (previewPackages.size == 1) {
+                    Spacer(Modifier.weight(1f))
                 }
             }
 
