@@ -433,3 +433,9 @@ Ringkasan paket pada banner Premium kini memakai grid 2 kolom yang lebih rapi. S
 - Each filter shows the current user count.
 - Filtering uses `effectiveRole`, so expired Premium users are classified consistently with the app's effective role logic.
 - No new Firestore collections or fields are required.
+
+
+## V17 — Admin User Search
+- Menambahkan pencarian user di Admin → Users berdasarkan email atau UID.
+- Pencarian dapat dipakai bersamaan dengan filter role (Semua, USER, PREMIUM, ADMIN).
+- Pencarian tidak mengubah data Firestore dan tidak memerlukan collection atau Rules baru.

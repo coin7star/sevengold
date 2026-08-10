@@ -700,9 +700,19 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
     }
 
     var selectedRoleFilter by remember { mutableStateOf<com.sevengold.signalapp.data.model.Role?>(null) }
+    var userSearchQuery by remember { mutableStateOf("") }
 
-    val filteredUsers = remember(users, selectedRoleFilter) {
-        selectedRoleFilter?.let { role -> users.filter { it.effectiveRole == role } } ?: users
+    val filteredUsers = remember(users, selectedRoleFilter, userSearchQuery) {
+        val query = userSearchQuery.trim()
+        users
+            .let { list ->
+                selectedRoleFilter?.let { role -> list.filter { it.effectiveRole == role } } ?: list
+            }
+            .filter { u ->
+                query.isBlank() ||
+                    u.email.contains(query, ignoreCase = true) ||
+                    u.uid.contains(query, ignoreCase = true)
+            }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -714,12 +724,42 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
             )
         }
 
-        // Filter role agar Admin lebih mudah mencari user tertentu.
+        // Filter role + pencarian email/UID agar Admin lebih mudah menemukan user tertentu.
         Column(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            Text(
+                "Cari User",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = userSearchQuery,
+                onValueChange = { userSearchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("Cari email atau UID...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Filled.Search,
+                        contentDescription = "Cari user"
+                    )
+                },
+                trailingIcon = {
+                    if (userSearchQuery.isNotEmpty()) {
+                        IconButton(onClick = { userSearchQuery = "" }) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Filled.Clear,
+                                contentDescription = "Hapus pencarian"
+                            )
+                        }
+                    }
+                }
+            )
+            Spacer(Modifier.height(12.dp))
             Text(
                 "Filter Role",
                 style = MaterialTheme.typography.labelLarge,
