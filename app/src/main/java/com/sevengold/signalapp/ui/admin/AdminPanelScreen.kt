@@ -5,6 +5,8 @@ package com.sevengold.signalapp.ui.admin
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,12 +55,17 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
     var entry by remember { mutableStateOf("") }
     var tp by remember { mutableStateOf("") }
     var sl by remember { mutableStateOf("") }
+    var rrTarget by remember { mutableStateOf("2") } // target RR default 1:2
     var note by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
+
+    // RR aktual dihitung live dari Entry/TP/SL yang lagi diisi (buat sanity-check sebelum publish)
+    val liveRR = remember(entry, tp, sl) { calculateRR(entry.toDoubleOrNull(), tp.toDoubleOrNull(), sl.toDoubleOrNull()) }
 
     Column(
         Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Text("Publish Sinyal XAUUSD", style = MaterialTheme.typography.titleMedium)
@@ -73,10 +80,55 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
 
         OutlinedTextField(value = entry, onValueChange = { entry = it }, label = { Text("Entry") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(value = tp, onValueChange = { tp = it }, label = { Text("Take Profit (TP)") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
         OutlinedTextField(value = sl, onValueChange = { sl = it }, label = { Text("Stop Loss (SL)") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
+
+        // --- Kalkulator RR: isi Entry + SL + target RR, TP otomatis kehitung ---
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(Modifier.padding(12.dp)) {
+                Text("Kalkulator RR", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Target RR  1 :", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(
+                        value = rrTarget,
+                        onValueChange = { rrTarget = it },
+                        modifier = Modifier.width(90.dp),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = {
+                        val entryD = entry.toDoubleOrNull()
+                        val slD = sl.toDoubleOrNull()
+                        val rrD = rrTarget.toDoubleOrNull()
+                        val computedTp = calculateTpFromRR(type, entryD, slD, rrD)
+                        if (computedTp != null) {
+                            tp = "%.2f".format(computedTp)
+                        }
+                    }) {
+                        Text("Isi TP")
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Isi Entry & SL dulu, lalu tekan \"Isi TP\" — TP otomatis dihitung sesuai target RR di atas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(value = tp, onValueChange = { tp = it }, label = { Text("Take Profit (TP)") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = if (liveRR != null) "RR saat ini: 1 : ${"%.2f".format(liveRR)}" else "RR saat ini: —",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(8.dp))
+
         OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
 
@@ -112,6 +164,27 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
     }
 }
 
+/** Hitung RR aktual (reward/risk) dari Entry/TP/SL yang sudah diisi. Null kalau datanya belum lengkap/valid. */
+private fun calculateRR(entry: Double?, tp: Double?, sl: Double?): Double? {
+    if (entry == null || tp == null || sl == null) return null
+    val risk = kotlin.math.abs(entry - sl)
+    if (risk <= 0.0) return null
+    val reward = kotlin.math.abs(tp - entry)
+    return reward / risk
+}
+
+/** Hitung TP otomatis dari Entry + SL + target RR, sesuai arah BUY/SELL. */
+private fun calculateTpFromRR(type: SignalType, entry: Double?, sl: Double?, rr: Double?): Double? {
+    if (entry == null || sl == null || rr == null || rr <= 0.0) return null
+    val risk = kotlin.math.abs(entry - sl)
+    if (risk <= 0.0) return null
+    val rewardDistance = risk * rr
+    return when (type) {
+        SignalType.BUY -> entry + rewardDistance
+        SignalType.SELL -> entry - rewardDistance
+    }
+}
+
 @Composable
 private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
     val signals by vm.signals.collectAsState()
@@ -133,7 +206,8 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.BE) }) { Text("Set BE") }
                         TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.CANCELLED) }) { Text("Cancel") }
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.CLOSED) }) { Text("Closed") }
+                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.TP_HIT) }) { Text("TP Hit") }
+                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.SL_HIT) }) { Text("SL Hit") }
                     }
                 }
             }

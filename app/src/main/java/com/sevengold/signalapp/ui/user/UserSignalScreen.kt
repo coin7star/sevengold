@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.Signal
+import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 
 /**
@@ -51,8 +52,10 @@ fun UserSignalScreen(
             actions = { TextButton(onClick = onLogout) { Text("Keluar") } }
         )
 
+        PerformanceSummaryCard(signals = signals, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+
         Card(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(Modifier.padding(16.dp)) {
@@ -64,7 +67,7 @@ fun UserSignalScreen(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(top = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(signals) { signal -> LockedSignalCard(signal) }

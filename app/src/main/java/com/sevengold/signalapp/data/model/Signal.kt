@@ -1,7 +1,13 @@
 package com.sevengold.signalapp.data.model
 
 enum class SignalType { BUY, SELL }
-enum class SignalStatus { ACTIVE, BE, CANCELLED, CLOSED }
+
+/**
+ * TP_HIT & SL_HIT menggantikan status lama "CLOSED", supaya kita bisa bedain
+ * sinyal yang closed karena menang (TP_HIT) vs kalah (SL_HIT) untuk hitung winrate.
+ * ACTIVE & CANCELLED tetap sama; BE (breakeven) & CANCELLED TIDAK dihitung ke winrate.
+ */
+enum class SignalStatus { ACTIVE, BE, CANCELLED, TP_HIT, SL_HIT }
 
 data class Signal(
     val id: String = "",
