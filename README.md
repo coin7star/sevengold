@@ -374,3 +374,13 @@ Jika function belum pernah aktif di Firebase, workflow deploy di atas akan menga
 
 Manual approval now uses the `durationDays` snapshot stored in the order. Approval no longer checks whether the package still exists or is enabled in `appSettings/subscriptionPackages`. This prevents valid pending orders from becoming unapprovable after an admin edits/deactivates a package. Admin still verifies the transfer amount manually before approving.
 
+
+
+## V11 — Checkout Voucher UX
+
+- Setiap pembelian paket selalu menampilkan kolom **Voucher Diskon (opsional)** di checkout.
+- Jika user memiliki voucher welcome yang masih aktif, kode voucher otomatis diisi pada checkout.
+- Kode voucher juga ditampilkan jelas di checkout agar user tidak perlu kembali ke Profil untuk menyalin kode.
+- User Premium juga mendapatkan kolom voucher yang sama saat memperpanjang langganan.
+- Voucher tetap hanya ditandai terpakai setelah order berhasil **APPROVED**.
+- Jika checkout dibatalkan atau order ditolak, voucher tidak dianggap terpakai.

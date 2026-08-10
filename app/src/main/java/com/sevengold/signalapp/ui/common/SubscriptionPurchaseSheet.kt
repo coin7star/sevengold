@@ -86,7 +86,7 @@ fun SubscriptionPurchaseSheet(
                 Text("Paket Premium", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Pilih paket dulu. Setelah klik Beli, kamu akan diminta memasukkan voucher jika punya voucher welcome.",
+                    "Pilih paket. Saat checkout selalu tersedia kolom voucher. Kalau kamu punya voucher welcome, kodenya akan langsung muncul dan bisa dipakai.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -100,7 +100,7 @@ fun SubscriptionPurchaseSheet(
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("🎁 Kamu punya Voucher Welcome!", fontWeight = FontWeight.Bold)
                             Text(
-                                "Diskon ${user.welcomeVoucherPercent}% akan ditawarkan otomatis saat kamu klik Beli Paket.",
+                                "Voucher ${user.welcomeVoucherCode} tersedia. Diskon ${user.welcomeVoucherPercent}% bisa langsung dipakai saat checkout.",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -138,7 +138,11 @@ fun SubscriptionPurchaseSheet(
                         Button(
                             onClick = {
                                 selectedPackage = pkg
-                                voucherCode = ""
+                                // Jika user punya voucher welcome yang masih aktif, tampilkan
+                                // langsung di checkout agar tidak perlu mencari/copy manual.
+                                voucherCode = if (
+                                    user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed
+                                ) user.welcomeVoucherCode else ""
                             },
                             enabled = !orders.any { it.status == SubscriptionOrderStatus.PENDING },
                             modifier = Modifier.fillMaxWidth()
@@ -156,7 +160,7 @@ fun SubscriptionPurchaseSheet(
             }
             item {
                 Text(
-                    "Voucher tidak wajib. Kalau kamu punya voucher welcome, masukkan setelah klik Beli Paket.",
+                    "Voucher tidak wajib. Setiap pembelian punya kolom voucher di checkout. Voucher welcome yang masih aktif akan ditampilkan otomatis.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -181,25 +185,38 @@ fun SubscriptionPurchaseSheet(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("${rupiah(pkg.price)} • +${pkg.durationDays} hari Premium")
-                        if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed) {
-                            OutlinedTextField(
-                                value = voucherCode,
-                                onValueChange = { voucherCode = it.uppercase() },
-                                label = { Text("Voucher Welcome (opsional)") },
-                                placeholder = { Text("Masukkan voucher jika punya") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            if (voucherCode.isNotBlank()) {
+                        OutlinedTextField(
+                            value = voucherCode,
+                            onValueChange = { voucherCode = it.uppercase() },
+                            label = { Text("Voucher Diskon (opsional)") },
+                            placeholder = {
                                 Text(
-                                    if (voucherValid)
-                                        "✓ Voucher valid • Hemat ${rupiah(discountAmount)}"
+                                    if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed)
+                                        "Voucher tersedia akan muncul di sini"
                                     else
-                                        "Voucher tidak valid / sudah digunakan",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (voucherValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        "Masukkan kode voucher jika punya"
                                 )
-                            }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed) {
+                            Text(
+                                "🎁 Voucher tersedia: ${user.welcomeVoucherCode}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        if (voucherCode.isNotBlank()) {
+                            Text(
+                                if (voucherValid)
+                                    "✓ Voucher valid • Hemat ${rupiah(discountAmount)}"
+                                else
+                                    "Voucher tidak valid / sudah digunakan",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (voucherValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
                         }
                         HorizontalDivider()
                         Text(
