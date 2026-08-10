@@ -10,7 +10,9 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val loading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    val welcomeVoucherCode: String? = null,
+    val welcomeVoucherPercent: Int = 0
 )
 
 class AuthViewModel(
@@ -52,7 +54,13 @@ class AuthViewModel(
         viewModelScope.launch {
             val result = repo.register(email.trim(), password, referralCode)
             _state.value = result.fold(
-                onSuccess = { AuthUiState(success = true) },
+                onSuccess = { registration ->
+                    AuthUiState(
+                        success = true,
+                        welcomeVoucherCode = registration.voucherCode.ifBlank { null },
+                        welcomeVoucherPercent = registration.voucherPercent
+                    )
+                },
                 onFailure = { AuthUiState(error = it.message ?: "Registrasi gagal") }
             )
         }

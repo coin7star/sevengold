@@ -30,10 +30,14 @@ fun SubscriptionBanner(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (premium) "💎 Perpanjang Premium" else "👑 Upgrade ke Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                if (premium) "💎 Perpanjang Premium" else "👑 Upgrade ke Premium",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             Text(
                 if (premium) "Pilih paket untuk menambah durasi. Sisa Premium tidak akan hilang."
-                else "Pilih paket Premium. Setelah pembayaran manual dikonfirmasi admin, akun otomatis berubah menjadi PREMIUM.",
+                else "Pilih paket Premium. Setelah pembayaran manual dikonfirmasi admin, akun otomatis menjadi PREMIUM.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -45,7 +49,9 @@ fun SubscriptionBanner(
                     packages.drop(2).forEach { pkg -> PackageMini(pkg, Modifier.weight(1f)) }
                 }
             }
-            Button(onClick = onBuy, modifier = Modifier.fillMaxWidth()) { Text("Lihat Paket & Beli") }
+            Button(onClick = onBuy, modifier = Modifier.fillMaxWidth()) {
+                Text("Lihat Paket & Beli")
+            }
         }
     }
 }
@@ -67,6 +73,7 @@ fun SubscriptionPurchaseSheet(
     onBuy: (SubscriptionPackage, String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var selectedPackage by remember { mutableStateOf<SubscriptionPackage?>(null) }
     var voucherCode by remember { mutableStateOf("") }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -78,40 +85,43 @@ fun SubscriptionPurchaseSheet(
             item {
                 Text("Paket Premium", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                Text("Pembayaran masih manual untuk tahap awal. Pilih paket, lakukan pembayaran sesuai instruksi admin, lalu tunggu approval.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Pilih paket dulu. Setelah klik Beli, kamu akan diminta memasukkan voucher jika punya voucher welcome.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
+
             if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed) {
                 item {
-                    OutlinedTextField(
-                        value = voucherCode,
-                        onValueChange = { voucherCode = it.uppercase() },
-                        label = { Text("Voucher welcome") },
-                        supportingText = { Text("Diskon ${user.welcomeVoucherPercent}% • hanya bisa digunakan 1x") },
-                        singleLine = true,
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                         modifier = Modifier.fillMaxWidth()
-                    )
-                    if (voucherCode.isNotBlank()) {
-                        Text(
-                            if (voucherCode.trim().equals(user.welcomeVoucherCode.trim(), ignoreCase = true) && !user.welcomeVoucherUsed && user.welcomeVoucherPercent > 0)
-                                "✓ Voucher valid — harga paket akan otomatis dipotong ${user.welcomeVoucherPercent}%"
-                            else
-                                "Voucher tidak valid / sudah digunakan",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (voucherCode.trim().equals(user.welcomeVoucherCode.trim(), ignoreCase = true) && !user.welcomeVoucherUsed && user.welcomeVoucherPercent > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                        )
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("🎁 Kamu punya Voucher Welcome!", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Diskon ${user.welcomeVoucherPercent}% akan ditawarkan otomatis saat kamu klik Beli Paket.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }
+
             if (orders.any { it.status == SubscriptionOrderStatus.PENDING }) {
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                         Column(Modifier.padding(12.dp)) {
                             Text("⏳ Pesanan sedang menunggu approval", fontWeight = FontWeight.Bold)
-                            Text("Admin akan memproses pesananmu setelah pembayaran dikonfirmasi.", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "Admin akan memproses pesananmu setelah pembayaran dikonfirmasi.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
             }
+
             items(packages) { pkg ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -119,44 +129,114 @@ fun SubscriptionPurchaseSheet(
                             Text(pkg.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             if (pkg.label.isNotBlank()) AssistChip(onClick = {}, label = { Text(pkg.label) })
                         }
-                        val normalizedVoucher = voucherCode.trim().uppercase()
-                        val voucherValid = normalizedVoucher.isNotBlank() &&
-                            normalizedVoucher == user.welcomeVoucherCode.trim().uppercase() &&
-                            user.welcomeVoucherPercent > 0 &&
-                            !user.welcomeVoucherUsed
-                        val discountPercent = if (voucherValid) user.welcomeVoucherPercent.coerceIn(0, 100) else 0
-                        val discountAmount = (pkg.price * discountPercent) / 100L
-                        val finalPrice = (pkg.price - discountAmount).coerceAtLeast(0L)
-
-                        if (voucherValid) {
-                            Text(
-                                "${rupiah(pkg.price)} → diskon ${discountPercent}% → ${rupiah(finalPrice)}",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text("Hemat ${rupiah(discountAmount)}", style = MaterialTheme.typography.labelSmall)
-                        } else {
-                            Text(rupiah(pkg.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        }
+                        Text(
+                            rupiah(pkg.price),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
                         Text("Aktif +${pkg.durationDays} hari Premium", style = MaterialTheme.typography.bodySmall)
                         Button(
-                            onClick = { onBuy(pkg, if (voucherValid) normalizedVoucher else "") },
+                            onClick = {
+                                selectedPackage = pkg
+                                voucherCode = ""
+                            },
                             enabled = !orders.any { it.status == SubscriptionOrderStatus.PENDING },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Beli Paket • ${rupiah(finalPrice)}") }
+                        ) {
+                            Text("Beli Paket • ${rupiah(pkg.price)}")
+                        }
                     }
                 }
             }
+
             if (!message.isNullOrBlank()) {
-                item { Text(message, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) }
+                item {
+                    Text(message, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
             }
             item {
-                Text("Masukkan voucher sebelum membeli agar harga diskon tercatat di pesanan dan bisa dicek admin.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Voucher tidak wajib. Kalau kamu punya voucher welcome, masukkan setelah klik Beli Paket.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(24.dp))
             }
+        }
+
+        val pkg = selectedPackage
+        if (pkg != null) {
+            val normalizedVoucher = voucherCode.trim().uppercase()
+            val voucherValid = normalizedVoucher.isNotBlank() &&
+                normalizedVoucher == user.welcomeVoucherCode.trim().uppercase() &&
+                user.welcomeVoucherPercent > 0 &&
+                !user.welcomeVoucherUsed
+            val discountPercent = if (voucherValid) user.welcomeVoucherPercent.coerceIn(0, 100) else 0
+            val discountAmount = (pkg.price * discountPercent) / 100L
+            val finalPrice = (pkg.price - discountAmount).coerceAtLeast(0L)
+
+            AlertDialog(
+                onDismissRequest = { selectedPackage = null },
+                title = { Text("Beli ${pkg.name}") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${rupiah(pkg.price)} • +${pkg.durationDays} hari Premium")
+                        if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed) {
+                            OutlinedTextField(
+                                value = voucherCode,
+                                onValueChange = { voucherCode = it.uppercase() },
+                                label = { Text("Voucher Welcome (opsional)") },
+                                placeholder = { Text("Masukkan voucher jika punya") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            if (voucherCode.isNotBlank()) {
+                                Text(
+                                    if (voucherValid)
+                                        "✓ Voucher valid • Hemat ${rupiah(discountAmount)}"
+                                    else
+                                        "Voucher tidak valid / sudah digunakan",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (voucherValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                        Text(
+                            if (voucherValid)
+                                "Harga ${rupiah(pkg.price)} → ${rupiah(finalPrice)}"
+                            else
+                                "Total: ${rupiah(finalPrice)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "Setelah klik konfirmasi, pesanan masuk ke admin untuk approval manual.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { selectedPackage = null }) { Text("Batal") }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onBuy(pkg, if (voucherValid) normalizedVoucher else "")
+                            selectedPackage = null
+                        }
+                    ) {
+                        Text("Konfirmasi • ${rupiah(finalPrice)}")
+                    }
+                }
+            )
         }
     }
 }
 
-fun rupiah(value: Long): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply { maximumFractionDigits = 0 }.format(value)
+fun rupiah(value: Long): String =
+    NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+        .apply { maximumFractionDigits = 0 }
+        .format(value)

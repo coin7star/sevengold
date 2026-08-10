@@ -171,7 +171,7 @@ private fun ReferralCard(user: AppUser) {
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Diskon welcome: ${user.welcomeVoucherPercent}% untuk teman baru. Tunjukkan voucher ke admin saat berlangganan.",
+                "Diskon welcome: ${user.welcomeVoucherPercent}%. Voucher akan dimasukkan setelah kamu klik Beli Paket Premium.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

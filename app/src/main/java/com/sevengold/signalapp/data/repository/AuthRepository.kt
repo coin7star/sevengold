@@ -6,13 +6,19 @@ import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Role
 import kotlinx.coroutines.tasks.await
 
+data class RegistrationResult(
+    val uid: String,
+    val voucherCode: String = "",
+    val voucherPercent: Int = 0
+)
+
 class AuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     val currentUid: String? get() = auth.currentUser?.uid
 
-    suspend fun register(email: String, password: String, referralCodeInput: String = ""): Result<String> = runCatching {
+    suspend fun register(email: String, password: String, referralCodeInput: String = ""): Result<RegistrationResult> = runCatching {
         val normalizedReferral = referralCodeInput.trim().uppercase()
 
         val result = auth.createUserWithEmailAndPassword(email, password).await()
@@ -59,7 +65,7 @@ class AuthRepository(
             throw e
         }
 
-        uid
+        RegistrationResult(uid = uid, voucherCode = welcomeVoucherCode, voucherPercent = welcomePercent)
     }
 
     suspend fun login(email: String, password: String): Result<String> = runCatching {

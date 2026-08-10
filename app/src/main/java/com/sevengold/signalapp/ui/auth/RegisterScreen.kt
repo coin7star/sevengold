@@ -32,8 +32,56 @@ fun RegisterScreen(
     var referralCode by remember { mutableStateOf("") }
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(state.success) {
-        if (state.success) onRegisterSuccess()
+    var showWelcomeVoucher by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.success, state.welcomeVoucherCode) {
+        if (state.success && !state.welcomeVoucherCode.isNullOrBlank()) {
+            showWelcomeVoucher = true
+        } else if (state.success) {
+            onRegisterSuccess()
+        }
+    }
+
+    if (showWelcomeVoucher) {
+        AlertDialog(
+            onDismissRequest = {
+                showWelcomeVoucher = false
+                onRegisterSuccess()
+            },
+            title = { Text("🎁 Voucher Welcome Kamu") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Akun berhasil dibuat!")
+                    Text(
+                        "Kamu mendapat voucher welcome ${state.welcomeVoucherPercent}% karena mendaftar lewat referral teman.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            state.welcomeVoucherCode.orEmpty(),
+                            modifier = Modifier.padding(14.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(
+                        "Voucher akan digunakan nanti saat kamu klik Beli Paket Premium.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showWelcomeVoucher = false
+                    onRegisterSuccess()
+                }) { Text("Oke, Lihat Paket") }
+            }
+        )
     }
 
     Box(

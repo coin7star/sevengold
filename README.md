@@ -362,17 +362,10 @@ Jika function belum pernah aktif di Firebase, workflow deploy di atas akan menga
 - Order yang sama tetap idempotent dan tidak dapat diberi Premium dua kali.
 
 
-## Manual Approval Subscription (V7)
-
-Approval langganan sengaja dibuat sederhana untuk fase awal:
-- User memilih paket dan, bila punya voucher, harga diskon dihitung langsung di layar sebelum order dibuat.
-- Order menyimpan snapshot `packageId`, `packageName`, `originalPrice`, `discountPercent`, `discountAmount`, `price`, dan `durationDays`.
-- Admin memeriksa pembayaran manual lalu menekan **Approve**.
-- Approval menggunakan `durationDays` yang tersimpan di order, sehingga **tidak gagal hanya karena paket di `appSettings/subscriptionPackages` sudah diubah/dinonaktifkan setelah order dibuat**.
-- User biasa menjadi `PREMIUM` dan expiry dihitung dari expiry lama jika masih aktif, atau dari waktu sekarang jika sudah habis.
-- User PREMIUM membeli lagi -> durasi ditambahkan ke expiry yang tersisa.
-- Voucher hanya berfungsi sebagai **diskon harga**. Voucher ditandai terpakai setelah order di-approve.
-- Referral reward tetap diberikan satu kali setelah subscription berhasil, sesuai `appSettings/referral.rewardPremiumDays`.
-
-Contoh:
-`Rp10.000 - voucher 10% = Rp9.000` untuk paket 7 hari. Admin cukup memverifikasi pembayaran Rp9.000 dan Approve; akun mendapat +7 hari Premium.
+## Update V8 — UX Voucher Welcome
+- Voucher welcome tidak lagi ditampilkan sebagai langkah wajib sebelum memilih paket.
+- User memilih paket terlebih dahulu, lalu setelah klik **Beli Paket** muncul dialog untuk memasukkan voucher.
+- Jika voucher valid, total harga langsung berubah di dialog sebelum konfirmasi order.
+- Jika user memiliki voucher welcome, halaman paket menampilkan banner **"Kamu punya Voucher Welcome!"** agar tidak mudah terlewat.
+- Setelah registrasi menggunakan referral, user langsung melihat dialog berisi kode voucher welcome dan instruksi bahwa voucher digunakan saat membeli paket.
+- Voucher tetap opsional dan baru dicatat sebagai terpakai setelah order disetujui.
