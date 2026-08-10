@@ -31,7 +31,7 @@ import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), USERS("Users"), PROFILE("Profil")
+    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
 }
 
 @Composable
@@ -79,6 +79,7 @@ fun AdminPanelScreen(
             AdminTab.SIGNALS -> ManageSignalsTab()
             AdminTab.CODES -> ManageCodesTab(adminUid)
             AdminTab.USERS -> ManageUsersTab()
+            AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
             AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
         }
     }
@@ -313,6 +314,82 @@ private fun ManageCodesTab(adminUid: String, vm: AdminViewModel = viewModel()) {
  * Panel User Management: admin bisa lihat semua akun (email, role, expiry premium)
  * dan langsung naik/turunin role USER <-> PREMIUM tanpa perlu generate kode dulu.
  */
+@Composable
+private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel()) {
+    val settings by vm.referralSettings.collectAsState()
+    val message by vm.settingsMessage.collectAsState()
+    var rewardDays by remember(settings.rewardPremiumDays) { mutableStateOf(settings.rewardPremiumDays.toString()) }
+    var voucherPercent by remember(settings.welcomeVoucherPercent) { mutableStateOf(settings.welcomeVoucherPercent.toString()) }
+    var enabled by remember(settings.enabled) { mutableStateOf(settings.enabled) }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Custom Referral", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(
+            "Atur reward referral langsung dari panel admin. Perubahan berlaku untuk referral baru dan reward referral berikutnya.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Program referral", fontWeight = FontWeight.SemiBold)
+                        Text("Aktif/nonaktif referral", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+
+                OutlinedTextField(
+                    value = rewardDays,
+                    onValueChange = { rewardDays = it.filter(Char::isDigit) },
+                    label = { Text("Bonus Premium untuk referrer (hari)") },
+                    supportingText = { Text("Contoh: 2 = +2 hari Premium") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = voucherPercent,
+                    onValueChange = { voucherPercent = it.filter(Char::isDigit) },
+                    label = { Text("Voucher welcome (%)") },
+                    supportingText = { Text("Contoh: 10 = diskon 10% untuk teman baru") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                if (message != null) {
+                    Text(message ?: "", color = if (message.startsWith("Gagal")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                }
+
+                GoldButton(
+                    text = "Simpan Pengaturan Referral",
+                    loading = false,
+                    onClick = {
+                        vm.updateReferralSettings(
+                            rewardDays = rewardDays.toIntOrNull() ?: settings.rewardPremiumDays,
+                            voucherPercent = voucherPercent.toIntOrNull() ?: settings.welcomeVoucherPercent,
+                            enabled = enabled
+                        )
+                    }
+                )
+            }
+        }
+
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Preview", fontWeight = FontWeight.SemiBold)
+                Text("Teman daftar dengan referral → voucher ${settings.welcomeVoucherPercent}%")
+                Text("Teman berhasil berlangganan → referrer +${settings.rewardPremiumDays} hari Premium")
+                Text("Status: ${if (settings.enabled) "Aktif" else "Nonaktif"}")
+            }
+        }
+    }
+}
+
 @Composable
 private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
     val users by vm.users.collectAsState()

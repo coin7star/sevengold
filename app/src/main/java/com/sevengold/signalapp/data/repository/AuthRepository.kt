@@ -30,7 +30,12 @@ class AuthRepository(
 
             // Kode referral stabil berdasarkan UID, jadi tidak perlu generate random.
             val myReferralCode = "SG${uid.take(8).uppercase()}"
-            val welcomeVoucherCode = referrerUid?.let { "WELCOME10-${uid.take(6).uppercase()}" } ?: ""
+            val referralSettingsSnap = db.collection("appSettings").document("referral").get().await()
+            val referralSettings = com.sevengold.signalapp.data.model.ReferralSettings.fromMap(referralSettingsSnap.data)
+            val welcomePercent = if (referrerUid != null && referralSettings.enabled) referralSettings.welcomeVoucherPercent else 0
+            val welcomeVoucherCode = if (referrerUid != null && welcomePercent > 0) {
+                "WELCOME${welcomePercent}-${uid.take(6).uppercase()}"
+            } else ""
             val newUser = AppUser(
                 uid = uid,
                 email = email,
@@ -38,7 +43,7 @@ class AuthRepository(
                 referralCode = myReferralCode,
                 referredByUid = referrerUid,
                 welcomeVoucherCode = welcomeVoucherCode,
-                welcomeVoucherPercent = if (referrerUid != null) 10 else 0
+                welcomeVoucherPercent = welcomePercent
             )
 
             val batch = db.batch()
@@ -73,14 +78,19 @@ class AuthRepository(
             ?.takeIf { it.isNotBlank() }
             ?: "SG${uid.take(8).uppercase()}"
         val isReferred = !snap.getString("referredByUid").isNullOrBlank()
+        val referralSettingsSnap = db.collection("appSettings").document("referral").get().await()
+        val referralSettings = com.sevengold.signalapp.data.model.ReferralSettings.fromMap(referralSettingsSnap.data)
+        val fallbackPercent = if (isReferred && referralSettings.enabled) referralSettings.welcomeVoucherPercent else 0
+        val existingVoucherPercent = snap.getLong("welcomeVoucherPercent")?.toInt()
+        val voucherPercent = existingVoucherPercent ?: fallbackPercent
         val voucherCode = snap.getString("welcomeVoucherCode")
             ?.takeIf { it.isNotBlank() }
-            ?: if (isReferred) "WELCOME10-${uid.take(6).uppercase()}" else ""
+            ?: if (isReferred && voucherPercent > 0) "WELCOME${voucherPercent}-${uid.take(6).uppercase()}" else ""
 
         val updates = mutableMapOf<String, Any>(
             "referralCode" to referralCode,
             "welcomeVoucherCode" to voucherCode,
-            "welcomeVoucherPercent" to (snap.getLong("welcomeVoucherPercent")?.toInt() ?: if (isReferred) 10 else 0),
+            "welcomeVoucherPercent" to voucherPercent,
             "welcomeVoucherUsed" to (snap.getBoolean("welcomeVoucherUsed") ?: false)
         )
         if (snap.getString("email").isNullOrBlank() && email.isNotBlank()) {

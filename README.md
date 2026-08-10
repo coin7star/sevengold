@@ -35,10 +35,11 @@ Versi ini menambahkan **program referral** end-to-end:
 - Saat register, user bisa memasukkan kode referral teman.
 - Teman baru yang mendaftar memakai kode referral otomatis mendapat **voucher welcome 10%** untuk pembelian/berlangganan pertama. Voucher tampil di Profil dan bisa ditunjukkan ke admin saat pembayaran.
 - **Bonus referral aktif setelah teman benar-benar berlangganan**, yaitu setelah kode langganan berhasil diredeem.
-- Referrer otomatis mendapat **+2 hari Premium**. Kalau referrer sedang Premium, 2 hari ditambahkan ke expiry yang masih aktif; kalau sudah USER/expired, role diaktifkan kembali menjadi PREMIUM selama 2 hari.
+- Referrer otomatis mendapat bonus Premium sesuai pengaturan admin (default **+2 hari**). Kalau referrer sedang Premium, bonus ditambahkan ke expiry yang masih aktif; kalau sudah USER/expired, role diaktifkan kembali menjadi PREMIUM selama durasi bonus.
 - Satu teman hanya menghasilkan **satu reward referral**, walaupun teman tersebut memperpanjang Premium lagi di kemudian hari.
 - Profil menampilkan kode referral, voucher welcome, jumlah referral yang berhasil, dan total hari bonus yang terkumpul.
-- Logika pemberian bonus dijalankan oleh **Cloud Function** agar reward tidak bergantung pada client Android dan dibuat idempotent untuk mencegah bonus dobel.
+- **Custom Referral dari Admin Panel** — admin sekarang punya tab **Referral** untuk mengubah jumlah hari bonus Premium, persentase voucher welcome, dan mengaktifkan/nonaktifkan program referral tanpa mengubah kode aplikasi.
+- Logika pemberian bonus dijalankan oleh **Cloud Function** agar reward tidak bergantung pada client Android dan dibuat idempotent untuk mencegah bonus dobel. Cloud Function membaca konfigurasi terbaru dari `appSettings/referral`.
 
 > **Catatan voucher:** sistem pembayaran otomatis belum ada di project ini. Voucher 10% disimpan sebagai benefit welcome dan ditampilkan ke user; admin tetap memproses harga/diskon saat transaksi berlangganan manual.
 
@@ -64,6 +65,25 @@ Cloud Function mendeteksi aktivasi
   ├─ USER A +2 hari Premium
   └─ referral B ditandai sudah mendapat reward
 ```
+
+### Custom Referral dari Admin Panel
+
+Admin dapat membuka **Admin Panel → Referral** dan mengubah:
+
+- **Program referral**: ON/OFF.
+- **Bonus Premium untuk referrer (hari)**: default `2`, bisa diubah dari `0` sampai `365`.
+- **Voucher welcome (%)**: default `10%`, bisa diubah dari `0%` sampai `100%`.
+
+Konfigurasi disimpan di Firestore:
+
+```text
+appSettings/referral
+  enabled: boolean
+  rewardPremiumDays: number
+  welcomeVoucherPercent: number
+```
+
+Perubahan **rewardPremiumDays** langsung dipakai Cloud Function saat referral baru berhasil berlangganan. Perubahan **welcomeVoucherPercent** dipakai untuk user baru yang mendaftar setelah pengaturan berubah; voucher yang sudah dibuat sebelumnya tidak diubah otomatis.
 
 ### Deploy Cloud Functions referral
 
@@ -173,6 +193,11 @@ subscriptionCodes/{code}
   usedByUid: string | null
   createdBy: uid (admin)
   createdAt: number
+
+appSettings/referral
+  enabled: boolean
+  rewardPremiumDays: number
+  welcomeVoucherPercent: number
 ```
 
 ## Alur langganan

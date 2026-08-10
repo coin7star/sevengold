@@ -44,5 +44,12 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    // Pengaturan referral: semua user login boleh membaca konfigurasi agar proses
+    // registrasi bisa memakai nilai terbaru; hanya ADMIN yang boleh mengubah.
+    match /appSettings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && role() == 'ADMIN';
+    }
   }
 }

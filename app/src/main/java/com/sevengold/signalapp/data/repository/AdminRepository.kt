@@ -3,6 +3,7 @@ package com.sevengold.signalapp.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.sevengold.signalapp.data.model.SubscriptionCode
+import com.sevengold.signalapp.data.model.ReferralSettings
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -13,6 +14,7 @@ class AdminRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val collection = db.collection("subscriptionCodes")
+    private val referralSettingsRef = db.collection("appSettings").document("referral")
 
     fun observeCodes(): Flow<List<SubscriptionCode>> = callbackFlow {
         val registration = collection
@@ -26,6 +28,21 @@ class AdminRepository(
                 trySend(snapshot?.documents?.map { SubscriptionCode.fromMap(it.data) } ?: emptyList())
             }
         awaitClose { registration.remove() }
+    }
+
+    fun observeReferralSettings(): Flow<ReferralSettings> = callbackFlow {
+        val registration = referralSettingsRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            trySend(ReferralSettings.fromMap(snapshot?.data))
+        }
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun updateReferralSettings(settings: ReferralSettings): Result<Unit> = runCatching {
+        referralSettingsRef.set(settings.toMap()).await()
     }
 
     /** Generate kode acak 8 karakter, misal "K7X9QF2A", lalu simpan ke Firestore. */

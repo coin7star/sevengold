@@ -60,7 +60,6 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
 });
 
 
-const REFERRAL_PREMIUM_DAYS = 2;
 
 /**
  * Saat teman yang punya referredByUid benar-benar mengaktifkan subscription,
@@ -82,8 +81,14 @@ exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", as
   const db = getFirestore();
   const referredRef = db.collection("users").doc(event.params.userId);
   const referrerRef = db.collection("users").doc(referrerUid);
+  const settingsSnap = await db.collection("appSettings").doc("referral").get();
+  const settings = settingsSnap.exists ? settingsSnap.data() : {};
+  const referralEnabled = settings.enabled !== false;
+  const rewardDays = Math.max(0, Math.min(365, Number(settings.rewardPremiumDays ?? 2)));
+  if (!referralEnabled || rewardDays <= 0) return;
+
   const now = Date.now();
-  const bonusMillis = REFERRAL_PREMIUM_DAYS * 24 * 60 * 60 * 1000;
+  const bonusMillis = rewardDays * 24 * 60 * 60 * 1000;
 
   await db.runTransaction(async (tx) => {
     const [referredSnap, referrerSnap] = await tx.getAll(referredRef, referrerRef);
@@ -103,7 +108,7 @@ exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", as
       role: referrer.role === "ADMIN" ? "ADMIN" : "PREMIUM",
       premiumExpiryMillis: referrer.role === "ADMIN" ? (referrer.premiumExpiryMillis || null) : newExpiry,
       referralSuccessfulCount: Number(referrer.referralSuccessfulCount || 0) + 1,
-      referralRewardDaysEarned: Number(referrer.referralRewardDaysEarned || 0) + REFERRAL_PREMIUM_DAYS,
+      referralRewardDaysEarned: Number(referrer.referralRewardDaysEarned || 0) + rewardDays,
       lastReferralRewardAt: now,
     });
 
