@@ -64,9 +64,11 @@ fun SubscriptionPurchaseSheet(
     packages: List<SubscriptionPackage>,
     orders: List<com.sevengold.signalapp.data.model.SubscriptionOrder>,
     message: String?,
-    onBuy: (SubscriptionPackage) -> Unit,
+    onBuy: (SubscriptionPackage, String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var voucherCode by remember { mutableStateOf("") }
+
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
@@ -77,6 +79,18 @@ fun SubscriptionPurchaseSheet(
                 Text("Paket Premium", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("Pembayaran masih manual untuk tahap awal. Pilih paket, lakukan pembayaran sesuai instruksi admin, lalu tunggu approval.", style = MaterialTheme.typography.bodySmall)
+            }
+            if (user.welcomeVoucherCode.isNotBlank() && !user.welcomeVoucherUsed) {
+                item {
+                    OutlinedTextField(
+                        value = voucherCode,
+                        onValueChange = { voucherCode = it.uppercase() },
+                        label = { Text("Voucher welcome") },
+                        supportingText = { Text("Diskon ${user.welcomeVoucherPercent}% • hanya bisa digunakan 1x") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
             if (orders.any { it.status == SubscriptionOrderStatus.PENDING }) {
                 item {
@@ -98,7 +112,7 @@ fun SubscriptionPurchaseSheet(
                         Text(rupiah(pkg.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text("Aktif +${pkg.durationDays} hari Premium", style = MaterialTheme.typography.bodySmall)
                         Button(
-                            onClick = { onBuy(pkg) },
+                            onClick = { onBuy(pkg, voucherCode.trim()) },
                             enabled = !orders.any { it.status == SubscriptionOrderStatus.PENDING },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Beli Paket") }
@@ -109,7 +123,7 @@ fun SubscriptionPurchaseSheet(
                 item { Text(message, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) }
             }
             item {
-                Text("Voucher referral welcome tetap tersedia dan untuk sementara diproses manual oleh admin.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Masukkan voucher sebelum membeli agar harga diskon tercatat di pesanan dan bisa dicek admin.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(24.dp))
             }
         }

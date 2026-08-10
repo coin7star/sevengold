@@ -121,7 +121,7 @@ fun PremiumSignalScreen(
             packages = packages,
             orders = orders,
             message = subscriptionMessage,
-            onBuy = { pkg -> subscriptionVm.createOrder(user.uid, user.email, pkg) },
+            onBuy = { pkg, voucher -> subscriptionVm.createOrder(user.uid, user.email, pkg, voucher) },
             onDismiss = { showPackagesSheet = false }
         )
     }

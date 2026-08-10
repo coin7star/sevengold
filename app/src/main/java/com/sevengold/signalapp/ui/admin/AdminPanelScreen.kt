@@ -352,6 +352,9 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
                                 Text(com.sevengold.signalapp.ui.common.rupiah(order.price), fontWeight = FontWeight.Bold, color = GoldPrimary)
                             }
                             Text("${order.email.ifBlank { order.uid }} • +${order.durationDays} hari")
+                            if (order.discountPercent > 0) {
+                                Text("Voucher ${order.discountPercent}% → ${com.sevengold.signalapp.ui.common.rupiah(order.price)}", style = MaterialTheme.typography.labelSmall)
+                            }
                             Text("Order: ${order.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Status: MENUNGGU PEMBAYARAN / APPROVAL", style = MaterialTheme.typography.labelSmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

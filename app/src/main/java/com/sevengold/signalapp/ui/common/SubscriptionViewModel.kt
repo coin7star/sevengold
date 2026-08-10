@@ -31,13 +31,13 @@ class SubscriptionViewModel(private val repo: SubscriptionRepository = Subscript
         }
     }
 
-    fun createOrder(uid: String, email: String, pkg: SubscriptionPackage) {
+    fun createOrder(uid: String, email: String, pkg: SubscriptionPackage, voucherCode: String = "") {
         if (_orders.value.any { it.status.name == "PENDING" }) {
             _message.value = "Masih ada pesanan yang menunggu approval admin."
             return
         }
         viewModelScope.launch {
-            val result = repo.createOrder(uid, email, pkg)
+            val result = repo.createOrder(uid, email, pkg, voucherCode)
             _message.value = result.fold(
                 onSuccess = { "Pesanan ${pkg.name} dibuat. Silakan ikuti instruksi pembayaran lalu tunggu approval admin." },
                 onFailure = { "Gagal membuat pesanan: ${it.message ?: "unknown error"}" }

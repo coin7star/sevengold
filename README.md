@@ -33,7 +33,7 @@ Versi ini menambahkan **program referral** end-to-end:
 
 - Setiap akun punya **kode referral pribadi** format `SGXXXXXXXX`.
 - Saat register, user bisa memasukkan kode referral teman.
-- Teman baru yang mendaftar memakai kode referral otomatis mendapat **voucher welcome 10%** untuk pembelian/berlangganan pertama. Voucher tampil di Profil dan bisa ditunjukkan ke admin saat pembayaran.
+- Teman baru yang mendaftar memakai kode referral otomatis mendapat **voucher welcome** sesuai persentase di Admin Panel. Voucher tampil di Profil dan dapat dimasukkan saat checkout paket.
 - **Bonus referral aktif setelah teman benar-benar berlangganan**, yaitu setelah kode langganan berhasil diredeem.
 - Referrer otomatis mendapat bonus Premium sesuai pengaturan admin (default **+2 hari**). Kalau referrer sedang Premium, bonus ditambahkan ke expiry yang masih aktif; kalau sudah USER/expired, role diaktifkan kembali menjadi PREMIUM selama durasi bonus.
 - Satu teman hanya menghasilkan **satu reward referral**, walaupun teman tersebut memperpanjang Premium lagi di kemudian hari.
@@ -41,7 +41,7 @@ Versi ini menambahkan **program referral** end-to-end:
 - **Custom Referral dari Admin Panel** — admin sekarang punya tab **Referral** untuk mengubah jumlah hari bonus Premium, persentase voucher welcome, dan mengaktifkan/nonaktifkan program referral tanpa mengubah kode aplikasi.
 - Logika pemberian bonus dijalankan oleh **Cloud Function** agar reward tidak bergantung pada client Android dan dibuat idempotent untuk mencegah bonus dobel. Cloud Function membaca konfigurasi terbaru dari `appSettings/referral`.
 
-> **Catatan voucher:** sistem pembayaran otomatis belum ada di project ini. Voucher 10% disimpan sebagai benefit welcome dan ditampilkan ke user; admin tetap memproses harga/diskon saat transaksi berlangganan manual.
+> **Catatan voucher:** pembayaran masih manual. User memasukkan voucher saat checkout, sistem menghitung harga diskon dan menyimpan harga final pada `subscriptionOrders`. Admin tetap memverifikasi pembayaran secara manual sebelum APPROVE.
 
 ### Alur referral
 
@@ -342,3 +342,12 @@ Saat admin mengubah order `PENDING` menjadi `APPROVED`, Cloud Function `onSubscr
 - membuat proses idempotent agar order yang sama tidak memberi Premium dua kali.
 
 Jika function belum pernah aktif di Firebase, workflow deploy di atas akan mengaktifkannya otomatis setelah perubahan ini dipush ke `main`.
+
+
+## Subscription approval v5
+- Admin approval now activates Premium atomically from the Android admin panel.
+- This manual-phase flow activates Premium atomically from the Admin app, so it does not depend on a deployed Cloud Function for the approval action.
+- Cloud Function remains a server-side backup; `approvalProcessedAt` prevents double activation.
+- Referral welcome voucher is now a real discount voucher: user enters the voucher before buying a package, the order stores original price, discount percent, discount amount, and final price.
+- Voucher is consumed only when the order is approved. Rejected orders do not consume it.
+- Premium purchases extend the current expiry; they never reset an active subscription.

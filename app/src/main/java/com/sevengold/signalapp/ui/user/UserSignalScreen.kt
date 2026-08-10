@@ -136,7 +136,7 @@ fun UserSignalScreen(
             packages = packages,
             orders = orders,
             message = subscriptionMessage,
-            onBuy = { pkg -> subscriptionVm.createOrder(uid, user.email, pkg) },
+            onBuy = { pkg, voucher -> subscriptionVm.createOrder(uid, user.email, pkg, voucher) },
             onDismiss = { showPackagesSheet = false }
         )
     }

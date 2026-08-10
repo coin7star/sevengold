@@ -112,7 +112,23 @@ class UserRepository(
         awaitClose { registration.remove() }
     }
 
-    suspend fun createSubscriptionOrder(uid: String, email: String, pkg: com.sevengold.signalapp.data.model.SubscriptionPackage): Result<String> = runCatching {
+    suspend fun createSubscriptionOrder(
+        uid: String,
+        email: String,
+        pkg: com.sevengold.signalapp.data.model.SubscriptionPackage,
+        voucherCode: String = ""
+    ): Result<String> = runCatching {
+        val userSnap = db.collection("users").document(uid).get().await()
+        val userVoucher = userSnap.getString("welcomeVoucherCode")?.trim()?.uppercase().orEmpty()
+        val storedPercent = (userSnap.getLong("welcomeVoucherPercent") ?: 0L).toInt().coerceIn(0, 100)
+        val voucherUsed = userSnap.getBoolean("welcomeVoucherUsed") == true
+        val normalizedVoucher = voucherCode.trim().uppercase()
+        val validVoucher = normalizedVoucher.isNotBlank() &&
+            normalizedVoucher == userVoucher && storedPercent > 0 && !voucherUsed
+        val discountPercent = if (validVoucher) storedPercent else 0
+        val discountAmount = (pkg.price * discountPercent) / 100L
+        val finalPrice = (pkg.price - discountAmount).coerceAtLeast(0L)
+
         val ref = db.collection("subscriptionOrders").document()
         val now = System.currentTimeMillis()
         ref.set(mapOf(
@@ -120,7 +136,11 @@ class UserRepository(
             "email" to email,
             "packageId" to pkg.id,
             "packageName" to pkg.name,
-            "price" to pkg.price,
+            "price" to finalPrice,
+            "originalPrice" to pkg.price,
+            "discountPercent" to discountPercent,
+            "discountAmount" to discountAmount,
+            "voucherCode" to if (validVoucher) normalizedVoucher else "",
             "durationDays" to pkg.durationDays,
             "status" to "PENDING",
             "createdAt" to now
