@@ -384,3 +384,12 @@ Manual approval now uses the `durationDays` snapshot stored in the order. Approv
 - User Premium juga mendapatkan kolom voucher yang sama saat memperpanjang langganan.
 - Voucher tetap hanya ditandai terpakai setelah order berhasil **APPROVED**.
 - Jika checkout dibatalkan atau order ditolak, voucher tidak dianggap terpakai.
+
+
+## Update terbaru — UI Sinyal Aktif & History
+
+- **Sinyal ACTIVE dipisahkan dari history** agar sinyal yang sedang berjalan langsung terlihat di bagian paling atas.
+- Jika ada lebih dari satu sinyal aktif, sinyal ditampilkan sebagai **kartu horizontal** yang bisa digeser ke kiri/kanan.
+- **History Sinyal** hanya berisi sinyal yang sudah tidak ACTIVE (`BE`, `TP HIT`, `SL HIT`, `CANCELLED`) dan tetap ditampilkan vertikal di bawah.
+- Tampilan ini diterapkan pada **USER dan PREMIUM**.
+- Untuk USER, sinyal aktif maupun history tetap menggunakan tampilan terkunci/blur sesuai role.

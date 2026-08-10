@@ -5,6 +5,7 @@ package com.sevengold.signalapp.ui.premium
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -99,16 +100,26 @@ fun PremiumSignalScreen(
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
             when (tab) {
-                PremiumTab.SIGNALS -> LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
-                ) {
-                    item { PremiumExpiryBanner(expiryLabel) }
-                    item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
-                    if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
-                    item { PerformanceSummaryCard(signals = signals) }
-                    items(signals) { signal -> SignalCard(signal) }
+                PremiumTab.SIGNALS -> {
+                    val activeSignals = remember(signals) {
+                        signals.filter { it.status == SignalStatus.ACTIVE }
+                    }
+                    val historySignals = remember(signals) {
+                        signals.filter { it.status != SignalStatus.ACTIVE }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                    ) {
+                        item { ActiveSignalsSection(signals = activeSignals) }
+                        item { PremiumExpiryBanner(expiryLabel) }
+                        item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
+                        if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
+                        item { PerformanceSummaryCard(signals = signals) }
+                        item { HistorySignalsSection(signals = historySignals) }
+                    }
                 }
                 PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
             }
@@ -124,6 +135,94 @@ fun PremiumSignalScreen(
             onBuy = { pkg, voucher -> subscriptionVm.createOrder(user.uid, user.email, pkg, voucher) },
             onDismiss = { showPackagesSheet = false }
         )
+    }
+}
+
+@Composable
+private fun ActiveSignalsSection(signals: List<Signal>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "🔥 Sinyal Aktif",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.width(8.dp))
+            if (signals.isNotEmpty()) {
+                Text(
+                    "${signals.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GoldLight,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (signals.isEmpty()) {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text(
+                    "Belum ada sinyal aktif.",
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(end = 4.dp)
+            ) {
+                items(signals, key = { it.id }) { signal ->
+                    Box(Modifier.width(320.dp)) {
+                        SignalCard(signal)
+                    }
+                }
+            }
+            if (signals.size > 1) {
+                Text(
+                    "Geser ke samping untuk melihat sinyal aktif lainnya →",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistorySignalsSection(signals: List<Signal>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            "📚 History Sinyal",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (signals.isEmpty()) {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text(
+                    "Belum ada history sinyal.",
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            signals.forEach { signal ->
+                SignalCard(signal)
+            }
+        }
     }
 }
 
