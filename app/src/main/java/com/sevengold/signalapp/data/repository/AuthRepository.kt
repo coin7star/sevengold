@@ -23,6 +23,9 @@ class AuthRepository(
 
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val uid = result.user?.uid ?: error("Gagal membuat akun")
+        // Nilai voucher dipakai setelah blok try untuk dikembalikan ke UI.
+        var welcomePercent = 0
+        var welcomeVoucherCode = ""
 
         try {
             val referrerUid = if (normalizedReferral.isNotBlank()) {
@@ -38,8 +41,8 @@ class AuthRepository(
             val myReferralCode = "SG${uid.take(8).uppercase()}"
             val referralSettingsSnap = db.collection("appSettings").document("referral").get().await()
             val referralSettings = com.sevengold.signalapp.data.model.ReferralSettings.fromMap(referralSettingsSnap.data)
-            val welcomePercent = if (referrerUid != null && referralSettings.enabled) referralSettings.welcomeVoucherPercent else 0
-            val welcomeVoucherCode = if (referrerUid != null && welcomePercent > 0) {
+            welcomePercent = if (referrerUid != null && referralSettings.enabled) referralSettings.welcomeVoucherPercent else 0
+            welcomeVoucherCode = if (referrerUid != null && welcomePercent > 0) {
                 "WELCOME${welcomePercent}-${uid.take(6).uppercase()}"
             } else ""
             val newUser = AppUser(
