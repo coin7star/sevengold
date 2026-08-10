@@ -219,3 +219,10 @@ Versi ini punya batasan yang wajar untuk MVP tapi perlu kamu tahu:
 - Login Google/provider lain (yang disebut untuk fase berikutnya) belum diimplementasikan di versi ini — baru email/password sesuai permintaan awal.
 
 Kalau nanti mau lanjut ke tahap Cloud Functions atau login Google, tinggal bilang — bisa dilanjutkan dari fondasi ini.
+
+## Fix build terbaru
+
+- Memperbaiki error Kotlin pada `AdminPanelScreen.kt` yang menyebabkan `compileDebugKotlin` gagal dengan pesan `Smart cast to 'String' is impossible` pada state `message`.
+- Nilai `message` sekarang disalin ke local `currentMessage` sebelum dipakai di `startsWith`, sehingga aman untuk property yang berasal dari `StateFlow`/custom getter.
+- Custom Referral tetap menggunakan `appSettings/referral`, sehingga admin dapat mengubah bonus Premium referrer dan persentase voucher welcome tanpa mengubah source code.
+

@@ -361,8 +361,13 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
                     singleLine = true
                 )
 
-                if (message != null) {
-                    Text(message ?: "", color = if (message.startsWith("Gagal")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                val currentMessage = message
+                if (currentMessage != null) {
+                    Text(
+                        currentMessage,
+                        color = if (currentMessage.startsWith("Gagal")) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
+                    )
                 }
 
                 GoldButton(

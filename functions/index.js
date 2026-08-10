@@ -63,7 +63,8 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
 
 /**
  * Saat teman yang punya referredByUid benar-benar mengaktifkan subscription,
- * referrer mendapat bonus 2 hari Premium. Reward hanya diberikan sekali per teman.
+ * referrer mendapat bonus Premium sesuai konfigurasi appSettings/referral.
+ * Reward hanya diberikan sekali per teman.
  * lastSubscriptionActivatedAt ditulis oleh transaction redeem subscription di Android.
  */
 exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", async (event) => {
