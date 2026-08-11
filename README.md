@@ -966,3 +966,13 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 
 ## V24.10
 - Admin drawer close/toggle fix: explicit close button, Android back handling, enabled swipe gestures, and scrim behavior.
+
+
+## V24.11 — Admin Drawer State Fix
+
+- Admin navigation now uses a deterministic full-screen drawer overlay.
+- `☰` opens the drawer.
+- `✕`, Android back, and a right swipe on the drawer close it reliably.
+- The drawer no longer remains stuck over the Admin content.
+- Admin content returns to the full device width after closing.
+- Existing Admin features and menu actions are preserved.
