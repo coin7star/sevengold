@@ -180,9 +180,6 @@ fun PremiumSignalScreen(
             }
         }
     }
-        )
-        }
-    )
     if (showPackagesSheet) {
         SubscriptionPurchaseSheet(
             user = user,
@@ -193,8 +190,8 @@ fun PremiumSignalScreen(
             onDismiss = { showPackagesSheet = false }
         )
     }
+    })
 }
-
 @Composable
 private fun ActiveSignalsSection(signals: List<Signal>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

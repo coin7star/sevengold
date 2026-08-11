@@ -199,9 +199,6 @@ fun UserSignalScreen(
             }
         }
     }
-        )
-        }
-    )
     if (showPackagesSheet) {
         SubscriptionPurchaseSheet(
             user = user,
@@ -240,8 +237,8 @@ fun UserSignalScreen(
             }
         }
     }
+    })
 }
-
 @Composable
 private fun ActiveSignalsSection(
     signals: List<Signal>,
