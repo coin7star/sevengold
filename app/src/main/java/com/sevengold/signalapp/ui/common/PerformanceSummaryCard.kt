@@ -32,10 +32,10 @@ fun PerformanceSummaryCard(signals: List<Signal>, modifier: Modifier = Modifier)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(16.dp, RoundedCornerShape(24.dp), ambientColor = Color.Black)
-            .clip(RoundedCornerShape(24.dp))
+            .shadow(8.dp, RoundedCornerShape(28.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+            .clip(RoundedCornerShape(28.dp))
             .background(SignalGradients.heroCard)
-            .padding(18.dp)
+            .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(

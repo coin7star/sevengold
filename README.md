@@ -997,3 +997,14 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Restored the AdminTab declaration and required imports removed during the previous drawer patch.
 - Restored theme colors, SignalListViewModel and rupiah references used by AdminPanelScreen.
 - Preserved the V24.13 drawer UI/state behavior.
+
+
+## V25.0 — Full UI Refresh
+
+- Visual redesign focused on a cleaner, more professional trading-app feel.
+- Larger typography and clearer hierarchy for headings, values, labels, and body text.
+- Softer, more rounded surfaces with reduced heavy shadows.
+- More generous spacing for mobile readability and touch comfort.
+- Subtle full-app background treatment while preserving the existing dark/gold identity.
+- Signal history and performance sections use a cleaner, less box-heavy presentation.
+- No business logic, Firebase data model, referral, voucher, subscription, approval, signal, or admin functionality was intentionally changed.

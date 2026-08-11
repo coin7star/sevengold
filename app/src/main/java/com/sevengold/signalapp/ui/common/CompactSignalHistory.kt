@@ -69,15 +69,15 @@ fun CompactSignalHistorySection(
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Column(Modifier.padding(vertical = 4.dp)) {
+                Column(Modifier.padding(vertical = 6.dp)) {
                     preview.forEachIndexed { index, signal ->
                         CompactSignalRow(signal = signal, locked = locked)
                         if (index < preview.lastIndex) {
                             HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 14.dp),
+                                modifier = Modifier.padding(horizontal = 18.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                             )
                         }
@@ -115,7 +115,7 @@ private fun CompactSignalRow(signal: Signal, locked: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
