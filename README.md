@@ -976,3 +976,14 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - The drawer no longer remains stuck over the Admin content.
 - Admin content returns to the full device width after closing.
 - Existing Admin features and menu actions are preserved.
+
+## V24.12 — Admin Drawer State & Layout Fix
+
+- Fixed malformed Admin drawer composition structure from the previous V24.11 patch.
+- Admin drawer is now a single full-screen overlay controlled directly by `drawerOpen`.
+- `X` closes the drawer immediately.
+- Android Back closes the drawer when it is open.
+- Swiping to the right closes the drawer.
+- Selecting any Admin menu closes the drawer automatically.
+- Admin navigation logic and existing features are preserved.
+

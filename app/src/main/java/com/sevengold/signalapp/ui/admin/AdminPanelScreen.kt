@@ -60,112 +60,91 @@ fun AdminPanelScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.AdminPanelSettings,
-                                contentDescription = null,
-                                tint = GoldPrimary
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                when (tab) {
-                                    AdminTab.PUBLISH -> "Terbitkan Sinyal"
-                                    AdminTab.SIGNALS -> "Kelola Sinyal"
-                                    AdminTab.CODES -> "Kode / Voucher"
-                                    AdminTab.PACKAGES -> "Paket Langganan"
-                                    AdminTab.SUBSCRIPTIONS -> "Pesanan"
-                                    AdminTab.USERS -> "Pengguna"
-                                    AdminTab.REFERRAL -> "Referral"
-                                    AdminTab.PROFILE -> "Profil Admin"
-                                },
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            drawerOpen = true
-                        }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onLogout) {
-                            Icon(
-                                Icons.Filled.Logout,
-                                contentDescription = "Keluar",
-                                tint = DangerRed
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
-                )
-
-                when (tab) {
-                    AdminTab.PUBLISH -> PublishSignalTab(adminUid)
-                    AdminTab.SIGNALS -> ManageSignalsTab()
-                    AdminTab.CODES -> ManageCodesTab(adminUid)
-                    AdminTab.PACKAGES -> SubscriptionPackagesTab()
-                    AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
-                    AdminTab.USERS -> ManageUsersTab()
-                    AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
-                    AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
-                }
-            }
-
-        AnimatedVisibility(
-            visible = drawerOpen,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            Box(
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.AdminPanelSettings,
+                            contentDescription = null,
+                            tint = GoldPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when (tab) {
+                                AdminTab.PUBLISH -> "Terbitkan Sinyal"
+                                AdminTab.SIGNALS -> "Kelola Sinyal"
+                                AdminTab.CODES -> "Kode / Voucher"
+                                AdminTab.PACKAGES -> "Paket Langganan"
+                                AdminTab.SUBSCRIPTIONS -> "Pesanan"
+                                AdminTab.USERS -> "Pengguna"
+                                AdminTab.REFERRAL -> "Referral"
+                                AdminTab.PROFILE -> "Profil Admin"
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { drawerOpen = true }) {
+                        Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            Icons.Filled.Logout,
+                            contentDescription = "Keluar",
+                            tint = DangerRed
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+
+            when (tab) {
+                AdminTab.PUBLISH -> PublishSignalTab(adminUid)
+                AdminTab.SIGNALS -> ManageSignalsTab()
+                AdminTab.CODES -> ManageCodesTab(adminUid)
+                AdminTab.PACKAGES -> SubscriptionPackagesTab()
+                AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
+                AdminTab.USERS -> ManageUsersTab()
+                AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
+                AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+            }
+        }
+
+        if (drawerOpen) {
+            Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.45f))
-            ) {
-                AnimatedVisibility(
-                    visible = drawerOpen,
-                    enter = slideInHorizontally(initialOffsetX = { -it }),
-                    exit = slideOutHorizontally(targetOffsetX = { -it }),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pointerInput(Unit) {
-                                var dragDistance = 0f
-                                detectHorizontalDragGestures(
-                                    onHorizontalDrag = { _, dragAmount ->
-                                        dragDistance += dragAmount
-                                    },
-                                    onDragEnd = {
-                                        if (dragDistance > 80f) drawerOpen = false
-                                        dragDistance = 0f
-                                    }
-                                )
+                    .pointerInput(Unit) {
+                        var dragDistance = 0f
+                        detectHorizontalDragGestures(
+                            onHorizontalDrag = { _, dragAmount ->
+                                dragDistance += dragAmount
                             },
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-Surface(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(),
+                            onDragEnd = {
+                                if (dragDistance > 80f) {
+                                    drawerOpen = false
+                                }
+                                dragDistance = 0f
+                            }
+                        )
+                    },
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(Modifier.fillMaxHeight()) {
+                Column(Modifier.fillMaxSize()) {
                     Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -179,9 +158,7 @@ Surface(
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
-                        IconButton(onClick = {
-                            drawerOpen = false
-                        }) {
+                        IconButton(onClick = { drawerOpen = false }) {
                             Icon(Icons.Filled.Close, contentDescription = "Tutup menu")
                         }
                     }
@@ -224,7 +201,11 @@ Surface(
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.SUBSCRIPTIONS,
-                        label = if (pendingOrders.isNotEmpty()) "Pesanan (${pendingOrders.size})" else "Pesanan",
+                        label = if (pendingOrders.isNotEmpty()) {
+                            "Pesanan (${pendingOrders.size})"
+                        } else {
+                            "Pesanan"
+                        },
                         icon = Icons.Filled.WorkspacePremium,
                         onClick = {
                             tab = AdminTab.SUBSCRIPTIONS
@@ -265,7 +246,9 @@ Surface(
                     )
 
                     Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -284,9 +267,6 @@ Surface(
                         IconButton(onClick = onLogout) {
                             Icon(Icons.Filled.Logout, contentDescription = "Keluar")
                         }
-                    }
-                }
-            }
                     }
                 }
             }
