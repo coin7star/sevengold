@@ -10,6 +10,14 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## V24.5 — Navigasi Samping & Mobile UI
+
+Penyempurnaan tampilan untuk HP berdasarkan basis V24.4:
+- Menu utama User/Premium dapat dibuka dari ikon **☰** di kiri atas.
+- Drawer berisi **Sinyal** dan **Profil**.
+- Bagian bawah drawer menampilkan email, role aktif, dan tombol keluar.
+- Drawer tetap nyaman di HP dan tablet, sementara fitur V24 Premium Push/Cloudflare Worker, paket, voucher, referral, approval, dan pencarian admin dipertahankan.
+
 ## V24.4 — Panel Sinyal Administrator Lebih Ringkas
 
 Panel **Sinyal** di Administrator sekarang lebih responsif dan mudah dipakai saat jumlah sinyal sudah banyak:

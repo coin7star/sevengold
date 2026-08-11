@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
@@ -61,6 +64,8 @@ fun UserSignalScreen(
     var showRedeemSheet by remember { mutableStateOf(false) }
     var showPackagesSheet by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf(UserTab.SIGNALS) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
 
     LaunchedEffect(uid) { subscriptionVm.startListeningOrders(uid) }
 
@@ -72,10 +77,59 @@ fun UserSignalScreen(
         }
     }
 
-    Scaffold(
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.widthIn(min = 280.dp, max = 340.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
+                Column(Modifier.fillMaxHeight()) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("SEVENGOLD", fontWeight = FontWeight.ExtraBold, color = GoldPrimary)
+                            Text("Menu aplikasi", style = MaterialTheme.typography.labelMedium)
+                        }
+                        IconButton(onClick = { drawerScope.launch { drawerState.close() } }) {
+                            Icon(Icons.Filled.Menu, contentDescription = "Tutup menu")
+                        }
+                    }
+                    NavigationDrawerItem(
+                        selected = tab == UserTab.SIGNALS,
+                        onClick = { tab = UserTab.SIGNALS; drawerScope.launch { drawerState.close() } },
+                        icon = { Icon(Icons.Filled.ShowChart, null) },
+                        label = { Text("Sinyal") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    NavigationDrawerItem(
+                        selected = tab == UserTab.PROFILE,
+                        onClick = { tab = UserTab.PROFILE; drawerScope.launch { drawerState.close() } },
+                        icon = { Icon(Icons.Filled.Person, null) },
+                        label = { Text("Profil") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(user.email, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                            Text(if (user.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM) "Premium" else "Pengguna", color = GoldPrimary, style = MaterialTheme.typography.labelMedium)
+                        }
+                        IconButton(onClick = onLogout) { Icon(Icons.Filled.Logout, contentDescription = "Keluar") }
+                    }
+                }
+            }
+        },
+        content = {
+        Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
+                        Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
+                    }
+                },
                 title = {
                     Text(
                         if (tab == UserTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
@@ -145,7 +199,9 @@ fun UserSignalScreen(
             }
         }
     }
-
+        )
+        }
+    )
     if (showPackagesSheet) {
         SubscriptionPurchaseSheet(
             user = user,
