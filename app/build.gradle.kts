@@ -5,10 +5,15 @@ plugins {
 }
 
 android {
+    val pushWebhookUrl = providers.gradleProperty("SEVENGOLD_PUSH_WEBHOOK_URL")
+        .orElse(System.getenv("SEVENGOLD_PUSH_WEBHOOK_URL") ?: "")
+        .get()
+
     namespace = "com.sevengold.signalapp"
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "PUSH_WEBHOOK_URL", "\"${pushWebhookUrl.replace("\"", "\\\"")}\"")
         applicationId = "com.sevengold.signalapp"
         minSdk = 24
         targetSdk = 34
@@ -34,6 +39,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

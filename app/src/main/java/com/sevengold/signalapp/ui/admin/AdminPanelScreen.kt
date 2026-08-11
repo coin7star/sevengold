@@ -254,10 +254,10 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
 
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.BE) }) { Text("Set BE") }
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.CANCELLED) }) { Text("Batalkan") }
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.TP_HIT) }) { Text("TP Hit") }
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.SL_HIT) }) { Text("SL Hit") }
+                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.BE) }) { Text("Set BE") }
+                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.CANCELLED) }) { Text("Batalkan") }
+                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.TP_HIT) }) { Text("TP Hit") }
+                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.SL_HIT) }) { Text("SL Hit") }
                     }
                 }
             }

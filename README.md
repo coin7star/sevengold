@@ -12,7 +12,11 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ## Update terbaru
 
-- **V22 — Premium Push Notification Otomatis & Reliable** — subscription FCM kini otomatis mengikuti status Premium aktif, termasuk unsubscribe saat logout/expired dan sinkronisasi real-time berdasarkan profil user. Notifikasi sinyal baru serta TP/SL/BE/Cancel tetap dikirim melalui topic `premium_signals` dan dapat tampil saat aplikasi berada di background atau ditutup, selama permission notifikasi dan Cloud Functions sudah aktif.\n\n- **V21 — Penyempurnaan Bahasa UI & Peran** — seluruh teks yang tampil kepada pengguna diseragamkan ke Bahasa Indonesia yang lebih profesional, jelas, dan mudah dipahami. Terminologi untuk **Pengguna, Premium, dan Administrator** diperjelas, termasuk status pesanan, persetujuan langganan, pencarian pengguna, profil, referal, voucher, dan tindakan di Panel Administrator. Istilah teknis trading seperti **BUY, SELL, Entry, TP, SL, BE, dan UID** tetap dipertahankan agar tidak mengubah makna teknis.
+- **V24 — Premium Push tanpa Firebase Cloud Functions** — jalur push real-time dipindahkan ke Cloudflare Worker yang aman. Admin Panel mengirim Firebase ID token + event ke Worker, Worker memverifikasi UID admin lalu mengirim FCM HTTP v1 langsung ke topic `premium_signals`. **FCM tetap gratis dan project Firebase tidak perlu di-upgrade ke Blaze hanya untuk push.**
+- **V24 — Push low-latency** — tidak menggunakan polling Firestore. Setelah Firestore berhasil menyimpan sinyal, Android langsung memanggil webhook; target jalur server adalah hitungan detik, walaupun waktu tampil di perangkat tetap dipengaruhi jaringan/Android.
+- **V23/V22 — Premium Push Android** — subscription topic `premium_signals`, notification channel prioritas tinggi, dan handling role Premium tetap dipertahankan.
+
+- **V21 — Penyempurnaan Bahasa UI & Peran** — seluruh teks yang tampil kepada pengguna diseragamkan ke Bahasa Indonesia yang lebih profesional, jelas, dan mudah dipahami. Terminologi untuk **Pengguna, Premium, dan Administrator** diperjelas, termasuk status pesanan, persetujuan langganan, pencarian pengguna, profil, referal, voucher, dan tindakan di Panel Administrator. Istilah teknis trading seperti **BUY, SELL, Entry, TP, SL, BE, dan UID** tetap dipertahankan agar tidak mengubah makna teknis.
 
 
 - **V20 — Responsive / Adaptive UI** — seluruh navigation/content sekarang memakai `AdaptiveAppFrame` berbasis `available window width`. Layout otomatis menyesuaikan HP, tablet, landscape, split-screen, dan foldable dengan breakpoint 600dp/840dp serta batas lebar content agar layar besar tidak terlihat terlalu melebar.
@@ -102,6 +106,132 @@ firebase deploy --only functions
 ```
 
 Jika Firebase CLI belum terpasang, gunakan Firebase CLI sesuai environment yang kamu pakai. **Cloud Function `onReferralSubscriptionActivated` wajib ter-deploy** karena fungsi inilah yang memberi bonus 2 hari secara server-side.
+
+## V24 — Premium Push tanpa Blaze (Cloudflare Worker)
+
+V24 mengganti ketergantungan push Premium pada **Firebase Cloud Functions**. Ini dibuat khusus supaya SevenGold tetap bisa memakai FCM tanpa meng-upgrade Firebase ke Blaze hanya untuk notifikasi.
+
+### Arsitektur
+
+```text
+Admin Panel
+    │
+    ├─ Firestore write (sumber data utama)
+    │
+    └─ HTTPS webhook + Firebase ID token
+             │
+             ▼
+      Cloudflare Worker
+      - verifikasi token Firebase
+      - cek UID ADMIN
+      - OAuth service account
+             │
+             ▼
+       FCM HTTP v1
+             │
+             ▼
+      topic: premium_signals
+             │
+             ▼
+       Device PREMIUM
+```
+
+**Tidak ada credential FCM di APK.** APK hanya mengetahui URL Worker dan mengirim Firebase ID token milik admin yang sedang login. Private key service account disimpan sebagai **Worker Secret**.
+
+### 1. Siapkan Cloudflare Worker
+
+Masuk ke folder:
+
+```bash
+cd push-worker
+npm install
+npx wrangler login
+```
+
+Deploy Worker setelah mengisi secret berikut:
+
+```bash
+npx wrangler secret put FIREBASE_PROJECT_ID
+npx wrangler secret put ADMIN_UIDS
+npx wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
+npx wrangler deploy
+```
+
+- `FIREBASE_PROJECT_ID`: project ID Firebase SevenGold.
+- `ADMIN_UIDS`: UID administrator yang boleh mengirim push. Jika lebih dari satu, pisahkan dengan koma.
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: **isi JSON service account Firebase/Google Cloud** yang mempunyai izin mengirim FCM. Jangan commit file JSON tersebut ke GitHub.
+
+Worker akan memberikan URL seperti:
+
+```text
+https://sevengold-premium-push.<subdomain>.workers.dev
+```
+
+URL inilah yang dipakai aplikasi Android.
+
+> **Keamanan:** jangan menaruh `FIREBASE_SERVICE_ACCOUNT_JSON`, private key, atau GitHub/Cloudflare token di aplikasi Android. Secret hanya boleh berada di Worker/secret manager.
+
+### 2. Pastikan FCM API dan service account siap
+
+Di Google Cloud/Firebase project yang sama, pastikan **Firebase Cloud Messaging API** aktif. Service account yang dipakai Worker harus memiliki izin untuk mengirim pesan FCM.
+
+FCM tidak mengenakan biaya per pesan. Yang dipindahkan keluar dari Firebase adalah proses backend push-nya.
+
+### 3. Hubungkan URL Worker ke Android build
+
+Tambahkan GitHub Actions repository secret:
+
+```text
+SEVENGOLD_PUSH_WEBHOOK_URL = https://sevengold-premium-push.<subdomain>.workers.dev
+```
+
+Workflow `Build APK` sudah meneruskan secret ini sebagai Gradle property:
+
+```text
+-PSEVENGOLD_PUSH_WEBHOOK_URL=...
+```
+
+Untuk build lokal, bisa memakai:
+
+```bash
+gradle assembleDebug -PSEVENGOLD_PUSH_WEBHOOK_URL="https://...workers.dev"
+```
+
+### 4. Event yang dikirim
+
+- `SIGNAL_CREATED` — admin menerbitkan sinyal baru.
+- `SIGNAL_ACTIVE` — status sinyal diaktifkan kembali.
+- `TP_HIT` — TP tercapai.
+- `SL_HIT` — SL tercapai.
+- `BE` — Break Even.
+- `CANCELLED` — sinyal dibatalkan.
+
+FireStore tetap menjadi sumber data utama. Jika Worker sedang down, data sinyal **tetap tersimpan**; UI akan memberi pesan bahwa data tersimpan tetapi notifikasi belum terkirim.
+
+### 5. Perkiraan latency
+
+Tidak memakai polling 1–5 menit. Jalurnya langsung:
+
+```text
+Admin klik → Firestore → Worker → FCM → Device
+```
+
+Target normal adalah **hitungan detik**, tetapi tidak ada jaminan waktu tampil yang absolut karena jaringan, cold start Worker, FCM, koneksi perangkat, battery optimization, dan Doze Android dapat memengaruhi delivery.
+
+Untuk sinyal BUY/SELL LIMIT TF 30 menit, desain ini jauh lebih sesuai dibanding polling berkala.
+
+### 6. Tes setelah deploy
+
+1. Install APK hasil GitHub Actions setelah secret `SEVENGOLD_PUSH_WEBHOOK_URL` ditambahkan.
+2. Login sebagai Premium di HP target dan pastikan izin notifikasi aktif.
+3. Login sebagai Administrator di device admin.
+4. Terbitkan sinyal baru.
+5. Periksa Logcat dengan tag `PremiumPush`.
+6. Uji **TP Hit**, **SL Hit**, **Set BE**, dan **Batalkan** dari Admin Panel.
+
+Jika Worker membalas `403`, UID admin belum dimasukkan ke `ADMIN_UIDS`. Jika `401`, Firebase ID token tidak valid/expired. Jika `500` saat FCM, periksa service account dan izin FCM.
+
+> **Catatan:** folder `functions/` pada project masih dipertahankan karena fitur referral dan approval langganan lama menggunakannya. **V24 tidak memerlukan Cloud Functions untuk push Premium.** Jika fitur referral/approval server-side tersebut tetap dipakai, Cloud Functions masih perlu di-deploy dan Firebase plan yang diperlukan mengikuti persyaratan Firebase untuk Functions.
 
 ## V23 — Premium Push Notification Fix
 
