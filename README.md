@@ -463,3 +463,9 @@ Panel **Admin → Users** sekarang memiliki pencarian user yang lebih jelas dan 
 5. Klik tombol **X** pada kolom pencarian untuk menghapus query dan kembali melihat seluruh user.
 
 > Catatan: versi ini menggunakan listener daftar user yang sudah dipakai panel ADMIN, kemudian melakukan filtering di sisi aplikasi. Untuk database dengan jumlah user sangat besar, pencarian server-side/pagination dapat ditambahkan pada tahap berikutnya.
+
+## V19 — Admin User Search Build Fix
+- Memperbaiki error compile Kotlin pada `AdminPanelScreen.kt` untuk ikon pencarian dan clear pada field **Cari User**.
+- Menambahkan import `Icons.Filled.Search` dan `Icons.Filled.Clear` yang sebelumnya belum dideklarasikan, sehingga error `Unresolved reference: Search` dan `Unresolved reference: Clear` tidak lagi terjadi pada source tersebut.
+- Fitur pencarian UID/email dari V18 tetap dipertahankan; tidak ada perubahan pada Firestore schema, collection, index, atau Rules.
+

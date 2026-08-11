@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -744,7 +746,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 placeholder = { Text("Cari email atau UID...") },
                 leadingIcon = {
                     Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Filled.Search,
+                        imageVector = Icons.Filled.Search,
                         contentDescription = "Cari user"
                     )
                 },
@@ -752,7 +754,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                     if (userSearchQuery.isNotEmpty()) {
                         IconButton(onClick = { userSearchQuery = "" }) {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Filled.Clear,
+                                imageVector = Icons.Filled.Clear,
                                 contentDescription = "Hapus pencarian"
                             )
                         }
