@@ -10,6 +10,19 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## V24.4 — Panel Sinyal Administrator Lebih Ringkas
+
+Panel **Sinyal** di Administrator sekarang lebih responsif dan mudah dipakai saat jumlah sinyal sudah banyak:
+
+- Pencarian cepat berdasarkan **pair, arah, status, atau catatan**.
+- Filter arah **Semua / BUY / SELL**.
+- Filter status **Semua / Aktif / TP Hit / SL Hit / BE / Batal**.
+- Daftar admin otomatis diringkas menjadi **8 sinyal terbaru** agar tidak memanjang tanpa batas.
+- Tombol **Lihat semua / Ringkas** tersedia saat hasil filter lebih dari 8 sinyal.
+- Hasil selalu diurutkan dari sinyal terbaru.
+- Ringkasan performa mengikuti hasil filter sehingga admin bisa langsung melihat statistik subset yang sedang dipilih.
+- Tidak mengubah jalur Firestore maupun Cloudflare Worker/FCM yang sudah digunakan untuk notifikasi Premium.
+
 ## V24.3 — Riwayat Sinyal Ringkas & Responsive UI
 
 Perbaikan UI berfokus pada penggunaan harian di HP sekaligus tetap nyaman di tablet, landscape, split-screen, dan layar yang lebih besar.

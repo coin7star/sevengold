@@ -232,37 +232,238 @@ private fun calculateTpFromRR(type: SignalType, entry: Double?, sl: Double?, rr:
 @Composable
 private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
     val signals by vm.signals.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var typeFilter by remember { mutableStateOf<SignalType?>(null) }
+    var statusFilter by remember { mutableStateOf<SignalStatus?>(null) }
+    var showAll by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = Modifier
+    val filteredSignals = remember(signals, searchQuery, typeFilter, statusFilter) {
+        val query = searchQuery.trim().lowercase()
+        signals
+            .filter { signal ->
+                val matchesQuery = query.isBlank() || listOf(
+                    signal.pair,
+                    signal.type.name,
+                    signal.status.name,
+                    signal.note
+                ).any { it.lowercase().contains(query) }
+                val matchesType = typeFilter == null || signal.type == typeFilter
+                val matchesStatus = statusFilter == null || signal.status == statusFilter
+                matchesQuery && matchesType && matchesStatus
+            }
+            .sortedByDescending { it.createdAt }
+    }
+
+    val visibleSignals = if (showAll) filteredSignals else filteredSignals.take(8)
+
+    Column(
+        Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        item {
-            com.sevengold.signalapp.ui.common.PerformanceSummaryCard(
-                signals = signals,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Kelola Sinyal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Filter dan kelola sinyal tanpa membuat halaman terlalu panjang.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (filteredSignals.size > 8) {
+                TextButton(onClick = { showAll = !showAll }) {
+                    Text(if (showAll) "Ringkas" else "Lihat semua")
+                }
+            }
         }
-        items(signals) { signal ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("${signal.type} ${signal.pair} — ${signal.status}", style = MaterialTheme.typography.titleSmall)
-                    Text("Entry: ${signal.entry}  TP: ${signal.tp}  SL: ${signal.sl}")
-                    if (signal.note.isNotBlank()) Text(signal.note)
 
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.BE) }) { Text("Set BE") }
-                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.CANCELLED) }) { Text("Batalkan") }
-                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.TP_HIT) }) { Text("TP Hit") }
-                        TextButton(onClick = { vm.updateStatus(signal, SignalStatus.SL_HIT) }) { Text("SL Hit") }
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Cari sinyal") },
+            trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Filled.Clear, contentDescription = "Hapus pencarian")
+                    }
+                }
+            },
+            placeholder = { Text("Cari pair, arah, status, atau catatan") },
+            label = { Text("Pencarian") }
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            contentPadding = PaddingValues(vertical = 2.dp)
+        ) {
+            item {
+                FilterChip(
+                    selected = typeFilter == null,
+                    onClick = { typeFilter = null },
+                    label = { Text("Semua arah") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = typeFilter == SignalType.BUY,
+                    onClick = { typeFilter = if (typeFilter == SignalType.BUY) null else SignalType.BUY },
+                    label = { Text("BUY") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = typeFilter == SignalType.SELL,
+                    onClick = { typeFilter = if (typeFilter == SignalType.SELL) null else SignalType.SELL },
+                    label = { Text("SELL") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == null,
+                    onClick = { statusFilter = null },
+                    label = { Text("Semua status") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == SignalStatus.ACTIVE,
+                    onClick = { statusFilter = if (statusFilter == SignalStatus.ACTIVE) null else SignalStatus.ACTIVE },
+                    label = { Text("Aktif") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == SignalStatus.TP_HIT,
+                    onClick = { statusFilter = if (statusFilter == SignalStatus.TP_HIT) null else SignalStatus.TP_HIT },
+                    label = { Text("TP Hit") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == SignalStatus.SL_HIT,
+                    onClick = { statusFilter = if (statusFilter == SignalStatus.SL_HIT) null else SignalStatus.SL_HIT },
+                    label = { Text("SL Hit") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == SignalStatus.BE,
+                    onClick = { statusFilter = if (statusFilter == SignalStatus.BE) null else SignalStatus.BE },
+                    label = { Text("BE") }
+                )
+            }
+            item {
+                FilterChip(
+                    selected = statusFilter == SignalStatus.CANCELLED,
+                    onClick = { statusFilter = if (statusFilter == SignalStatus.CANCELLED) null else SignalStatus.CANCELLED },
+                    label = { Text("Batal") }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            "Menampilkan ${visibleSignals.size} dari ${filteredSignals.size} sinyal",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item {
+                com.sevengold.signalapp.ui.common.PerformanceSummaryCard(
+                    signals = filteredSignals,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+
+            if (visibleSignals.isEmpty()) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Tidak ada sinyal yang sesuai", fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Coba ubah kata kunci atau filter.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(visibleSignals, key = { it.id }) { signal ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${signal.type} ${signal.pair}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            AssistChip(
+                                onClick = {},
+                                label = { Text(adminSignalStatusLabel(signal.status)) }
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("Entry: ${signal.entry}  •  TP: ${signal.tp}  •  SL: ${signal.sl}")
+                        if (signal.note.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                signal.note,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            TextButton(onClick = { vm.updateStatus(signal, SignalStatus.BE) }) { Text("BE") }
+                            TextButton(onClick = { vm.updateStatus(signal, SignalStatus.CANCELLED) }) { Text("Batal") }
+                            TextButton(onClick = { vm.updateStatus(signal, SignalStatus.TP_HIT) }) { Text("TP Hit") }
+                            TextButton(onClick = { vm.updateStatus(signal, SignalStatus.SL_HIT) }) { Text("SL Hit") }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun adminSignalStatusLabel(status: SignalStatus): String = when (status) {
+    SignalStatus.ACTIVE -> "Aktif"
+    SignalStatus.BE -> "BE"
+    SignalStatus.CANCELLED -> "Dibatalkan"
+    SignalStatus.TP_HIT -> "TP Hit"
+    SignalStatus.SL_HIT -> "SL Hit"
 }
 
 @Composable
