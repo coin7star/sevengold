@@ -1023,9 +1023,14 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Tidak mengubah logic Firebase, referral, voucher, subscription, signal, maupun Admin.
 
 
-## V25.3 — Responsive UI
+## V25.4 — Responsive UI
 - Added adaptive content width for admin, user, premium and profile screens.
 - Subscription approval cards adapt to compact phone widths: price/header stacks and action buttons become full width.
 - Admin role filters are horizontally scrollable on narrow screens instead of overflowing.
 - Desktop/tablet layouts use a readable maximum content width while phones use available width with safe padding.
 - Existing Firebase, referral, voucher, subscription, signal and drawer logic is unchanged.
+
+
+## V25.4
+- Fix compile error in Admin user role filter by adding the missing Jetpack Compose `LazyRow` import.
+- No feature or business-logic changes.
