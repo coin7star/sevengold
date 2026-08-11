@@ -799,13 +799,46 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
         ) {
             item {
                 Text(
-                    "${filteredUsers.size} user ditampilkan",
+                    if (userSearchQuery.isBlank()) {
+                        "${filteredUsers.size} user ditampilkan"
+                    } else {
+                        "${filteredUsers.size} user cocok dari ${users.size} user"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
-            items(filteredUsers) { u -> UserRow(u, vm) }
+            if (filteredUsers.isEmpty()) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "User tidak ditemukan",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Coba cek kembali email atau UID yang dicari.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(
+                    items = filteredUsers,
+                    key = { it.uid }
+                ) { u ->
+                    UserRow(u, vm)
+                }
+            }
         }
     }
 }
@@ -818,8 +851,23 @@ private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserMa
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(user.email.ifBlank { user.uid }, style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        user.email.ifBlank { "Email tidak tersedia" },
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "UID: ${user.uid}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 RoleBadge(user.effectiveRole)
             }
             if (user.role == com.sevengold.signalapp.data.model.Role.PREMIUM) {

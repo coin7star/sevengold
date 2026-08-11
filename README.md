@@ -439,3 +439,27 @@ Ringkasan paket pada banner Premium kini memakai grid 2 kolom yang lebih rapi. S
 - Menambahkan pencarian user di Admin → Users berdasarkan email atau UID.
 - Pencarian dapat dipakai bersamaan dengan filter role (Semua, USER, PREMIUM, ADMIN).
 - Pencarian tidak mengubah data Firestore dan tidak memerlukan collection atau Rules baru.
+
+
+## V18 — Admin User Search (UID & Email)
+
+Panel **Admin → Users** sekarang memiliki pencarian user yang lebih jelas dan praktis:
+
+- Search berjalan **real-time saat admin mengetik**.
+- Pencarian mendukung **UID** dan **email** sekaligus.
+- Pencarian bersifat **case-insensitive** dan mendukung kecocokan sebagian, jadi admin tidak harus mengetik email/UID secara lengkap.
+- Search dapat digunakan bersamaan dengan filter role **Semua / USER / PREMIUM / ADMIN**.
+- Jumlah hasil ditampilkan sebagai `X user cocok dari Y user` saat pencarian aktif.
+- Jika tidak ada hasil, panel menampilkan empty state yang menjelaskan bahwa email atau UID perlu dicek kembali.
+- Setiap baris user sekarang menampilkan **email dan UID** agar hasil pencarian lebih mudah diverifikasi sebelum admin mengubah role.
+- Tidak ada collection, field, index Firestore, atau perubahan Firestore Rules yang diperlukan karena pencarian dilakukan terhadap daftar user yang memang sudah dimuat oleh panel ADMIN.
+
+### Cara memakai
+
+1. Login sebagai **ADMIN**.
+2. Buka **Admin Panel → Users**.
+3. Masukkan sebagian atau seluruh **email** atau **UID** pada kolom **Cari User**.
+4. Opsional, kombinasikan dengan filter role.
+5. Klik tombol **X** pada kolom pencarian untuk menghapus query dan kembali melihat seluruh user.
+
+> Catatan: versi ini menggunakan listener daftar user yang sudah dipakai panel ADMIN, kemudian melakukan filtering di sisi aplikasi. Untuk database dengan jumlah user sangat besar, pencarian server-side/pagination dapat ditambahkan pada tahap berikutnya.
