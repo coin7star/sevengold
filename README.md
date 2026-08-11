@@ -987,3 +987,8 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Selecting any Admin menu closes the drawer automatically.
 - Admin navigation logic and existing features are preserved.
 
+
+
+## V24.13
+- Fixed AdminPanelScreen Kotlin import corruption introduced during the Admin drawer patch.
+- Preserved the V24.12 Admin drawer behavior and existing features.

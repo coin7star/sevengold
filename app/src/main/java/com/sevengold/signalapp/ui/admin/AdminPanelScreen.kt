@@ -44,7 +44,9 @@ import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.ui.auth.GoldButton
 import com.sevengold.signalapp.ui.common.ProfileScreen
-import com@Composable
+import com.sevengold.signalapp.ui.admin.SubscriptionAdminViewModel
+
+@Composable
 fun AdminPanelScreen(
     adminUid: String,
     user: AppUser,
