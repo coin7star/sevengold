@@ -103,6 +103,31 @@ firebase deploy --only functions
 
 Jika Firebase CLI belum terpasang, gunakan Firebase CLI sesuai environment yang kamu pakai. **Cloud Function `onReferralSubscriptionActivated` wajib ter-deploy** karena fungsi inilah yang memberi bonus 2 hari secara server-side.
 
+## V23 — Premium Push Notification Fix
+
+Versi ini memperbaiki alur push agar lebih mudah didiagnosis dan lebih kompatibel dengan konfigurasi FCM Android.
+
+Perbaikan utama:
+- Cloud Function sekarang mengirim konfigurasi **Android high priority**, channel `premium_signals`, dan `sound: default`.
+- Setiap pengiriman FCM dicatat ke Cloud Functions log dengan nama event dan hasil `messageId`. Jika FCM gagal, error juga tercatat.
+- Perubahan status **ACTIVE** pada dokumen `signals` juga dianggap sebagai sinyal aktif dan memicu notifikasi, bukan hanya pembuatan dokumen baru.
+- Android mencatat hasil subscribe/unsubscribe topic ke Logcat (`PremiumPush`), sehingga bisa dipastikan apakah device benar-benar sudah masuk topic `premium_signals`.
+
+### Wajib setelah update V23
+
+Deploy Cloud Functions dari folder project:
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+Kemudian login sebagai **Premium**, pastikan izin notifikasi Android aktif, dan lihat Logcat dengan tag `PremiumPush`. Harus muncul `Berhasil subscribe topic premium_signals`. Setelah itu publish sinyal baru dari Panel Administrator.
+
+> **Penting:** ZIP/source code tidak dapat otomatis mengaktifkan Cloud Functions di project Firebase kamu. Deployment Functions tetap wajib dilakukan ke Firebase project yang sama dengan aplikasi Android.
+
 ## V22 — Premium Push Notification Otomatis & Reliable
 
 Notifikasi sinyal Premium sekarang disinkronkan otomatis berdasarkan status Premium yang aktif.

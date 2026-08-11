@@ -1,12 +1,11 @@
 /**
- * Cloud Function ini yang beneran "mendengar" perubahan di Firestore lalu ngirim
- * push notification ke semua HP user PREMIUM (via topic "premium_signals").
+ * Cloud Functions untuk push notification sinyal Premium.
  *
- * Kenapa harus lewat sini (server), bukan langsung dari app Android?
- * Karena notifikasi harus tetap nyampe walau HP user lain lagi nutup/gak buka app-nya.
- * Client Android cuma bisa NERIMA notif, gak bisa ngirim notif ke HP orang lain.
+ * Alur:
+ * Admin -> Firestore /signals -> Cloud Function -> FCM topic premium_signals
+ *
+ * Topic hanya berisi device yang sedang Premium aktif.
  */
-
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -17,29 +16,81 @@ initializeApp();
 const TOPIC = "premium_signals";
 
 function typeLabel(type) {
-  return type === "SELL" ? "SELL" : "BUY";
+  return String(type || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
 }
 
-/** Sinyal baru dipublish admin -> notif "Sinyal Baru XAUUSD". */
+function signalBody(data) {
+  const type = typeLabel(data?.type);
+  const pair = data?.pair || "XAUUSD";
+  const entry = data?.entry ?? "-";
+  const tp = data?.tp ?? "-";
+  const sl = data?.sl ?? "-";
+  return `${type} ${pair} @ ${entry} | TP: ${tp} | SL: ${sl}`;
+}
+
+async function sendPremiumNotification(title, body, eventName) {
+  try {
+    const response = await getMessaging().send({
+      topic: TOPIC,
+      notification: { title, body },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "premium_signals",
+          priority: "high",
+          sound: "default",
+        },
+      },
+      data: {
+        event: eventName,
+        title,
+        body,
+      },
+    });
+    console.log(`[PremiumPush] ${eventName} sent: ${response}`);
+    return response;
+  } catch (error) {
+    console.error(`[PremiumPush] ${eventName} failed:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Publish membuat dokumen baru dengan status ACTIVE.
+ */
 exports.onSignalCreated = onDocumentCreated("signals/{signalId}", async (event) => {
   const data = event.data?.data();
   if (!data) return;
 
-  await getMessaging().send({
-    topic: TOPIC,
-    notification: {
-      title: "📢 Sinyal Baru XAUUSD",
-      body: `${typeLabel(data.type)} @ ${data.entry} | TP: ${data.tp} | SL: ${data.sl}`,
-    },
-  });
+  await sendPremiumNotification(
+    "📢 Sinyal Baru XAUUSD",
+    signalBody(data),
+    "SIGNAL_CREATED"
+  );
 });
 
-/** Status sinyal berubah (TP_HIT / SL_HIT / BE / CANCELLED) -> notif sesuai hasilnya. */
+/**
+ * Perubahan status:
+ * ACTIVE -> BE / TP_HIT / SL_HIT / CANCELLED
+ * dan juga perubahan apa pun -> ACTIVE dianggap sebagai sinyal yang baru diaktifkan.
+ */
 exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) => {
   const before = event.data?.before?.data();
   const after = event.data?.after?.data();
   if (!before || !after) return;
-  if (before.status === after.status) return; // cuma kirim kalau status BERUBAH
+
+  const beforeStatus = String(before.status || "");
+  const afterStatus = String(after.status || "");
+  if (beforeStatus === afterStatus) return;
+
+  if (afterStatus === "ACTIVE") {
+    await sendPremiumNotification(
+      "📢 Sinyal Aktif XAUUSD",
+      signalBody(after),
+      "SIGNAL_ACTIVE"
+    );
+    return;
+  }
 
   const titles = {
     TP_HIT: "🎯 TP HIT — Profit!",
@@ -47,26 +98,13 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
     BE: "⚖️ Sinyal di-set Break Even",
     CANCELLED: "❌ Sinyal Dibatalkan",
   };
-  const title = titles[after.status];
-  if (!title) return; // status ACTIVE atau status lain gak perlu notif
+  const title = titles[afterStatus];
+  if (!title) return;
 
-  await getMessaging().send({
-    topic: TOPIC,
-    notification: {
-      title,
-      body: `${typeLabel(after.type)} XAUUSD @ ${after.entry}`,
-    },
-  });
+  await sendPremiumNotification(title, signalBody(after), afterStatus);
 });
 
-
-
-/**
- * Saat teman yang punya referredByUid benar-benar mengaktifkan subscription,
- * referrer mendapat bonus Premium sesuai konfigurasi appSettings/referral.
- * Reward hanya diberikan sekali per teman.
- * lastSubscriptionActivatedAt ditulis oleh transaction redeem subscription di Android.
- */
+/** Referral reward. */
 exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", async (event) => {
   const before = event.data?.before?.data();
   const after = event.data?.after?.data();
@@ -93,12 +131,9 @@ exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", as
 
   await db.runTransaction(async (tx) => {
     const [referredSnap, referrerSnap] = await tx.getAll(referredRef, referrerRef);
-
     if (!referredSnap.exists || !referrerSnap.exists) return;
     const referred = referredSnap.data();
     const referrer = referrerSnap.data();
-
-    // Idempotency: kalau retry/function terpicu ulang, jangan kasih bonus kedua.
     if (referred.referralRewardGranted === true) return;
 
     const currentExpiry = Number(referrer.premiumExpiryMillis || 0);
@@ -112,20 +147,11 @@ exports.onReferralSubscriptionActivated = onDocumentUpdated("users/{userId}", as
       referralRewardDaysEarned: Number(referrer.referralRewardDaysEarned || 0) + rewardDays,
       lastReferralRewardAt: now,
     });
-
-    tx.update(referredRef, {
-      referralRewardGranted: true,
-      referralRewardGrantedAt: now,
-    });
+    tx.update(referredRef, { referralRewardGranted: true, referralRewardGrantedAt: now });
   });
 });
 
-/**
- * Approval langganan manual.
- * Admin hanya mengubah status order menjadi APPROVED/REJECTED.
- * Saat APPROVED, function server yang mengubah role + expiry user agar client tidak bisa
- * memberikan Premium sendiri.
- */
+/** Approval langganan manual. */
 exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orderId}", async (event) => {
   const before = event.data?.before?.data();
   const after = event.data?.after?.data();
@@ -139,8 +165,6 @@ exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orde
   const userRef = db.collection("users").doc(after.uid);
   const now = Date.now();
 
-  // Validasi snapshot paket sebelum memberi Premium. Ini mencegah client mengirim
-  // order palsu dengan harga murah tetapi durationDays sangat besar.
   const packageSnap = await db.collection("appSettings").doc("subscriptionPackages").get();
   const packageList = packageSnap.exists && Array.isArray(packageSnap.data()?.packages)
     ? packageSnap.data().packages
@@ -151,15 +175,11 @@ exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orde
       { id: "vip", name: "VIP", price: 50000, durationDays: 30, enabled: true },
     ];
   const configuredPackage = packageList.find((pkg) =>
-    pkg && pkg.id === after.packageId &&
-    pkg.enabled !== false &&
+    pkg && pkg.id === after.packageId && pkg.enabled !== false &&
     Number(pkg.price) === Number(after.price) &&
     Number(pkg.durationDays) === Number(after.durationDays)
   );
-  if (!configuredPackage) {
-    console.warn(`Order ${event.params.orderId} tidak cocok dengan konfigurasi paket aktif; Premium tidak diberikan.`);
-    return;
-  }
+  if (!configuredPackage) return;
 
   const durationDays = Math.max(1, Math.min(3650, Number(after.durationDays || 0)));
   const durationMillis = durationDays * 24 * 60 * 60 * 1000;
@@ -181,7 +201,6 @@ exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orde
       lastSubscriptionActivatedAt: now,
       lastSubscriptionOrderId: event.params.orderId,
     });
-
     tx.update(orderRef, {
       approvalProcessedAt: now,
       processedExpiryMillis: newExpiry,

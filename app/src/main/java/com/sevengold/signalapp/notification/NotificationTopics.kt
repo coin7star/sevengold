@@ -4,17 +4,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 
-/**
- * Semua user PREMIUM subscribe ke topic ini supaya Cloud Function cukup kirim
- * SATU pesan ke topic-nya, gak perlu simpen/loop token device satu-satu.
- * Role USER & yang premium-nya sudah expired otomatis unsubscribe.
- */
 const val TOPIC_PREMIUM_SIGNALS = "premium_signals"
 const val NOTIFICATION_CHANNEL_ID = "premium_signals"
 
 object NotificationTopics {
+    private const val TAG = "PremiumPush"
 
     fun createChannelIfNeeded(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -23,18 +20,27 @@ object NotificationTopics {
                 "Update Sinyal Premium",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifikasi sinyal baru, TP, SL, BE, dan Cancel untuk member Premium"
+                description = "Notifikasi sinyal baru, TP, SL, BE, dan pembatalan untuk member Premium"
+                setShowBadge(true)
+                enableVibration(true)
             }
-            val manager = context.getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+            context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
 
     fun subscribeToPremiumSignals() {
         FirebaseMessaging.getInstance().subscribeToTopic(TOPIC_PREMIUM_SIGNALS)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) Log.d(TAG, "Berhasil subscribe topic $TOPIC_PREMIUM_SIGNALS")
+                else Log.e(TAG, "Gagal subscribe topic $TOPIC_PREMIUM_SIGNALS", task.exception)
+            }
     }
 
     fun unsubscribeFromPremiumSignals() {
         FirebaseMessaging.getInstance().unsubscribeFromTopic(TOPIC_PREMIUM_SIGNALS)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) Log.d(TAG, "Berhasil unsubscribe topic $TOPIC_PREMIUM_SIGNALS")
+                else Log.e(TAG, "Gagal unsubscribe topic $TOPIC_PREMIUM_SIGNALS", task.exception)
+            }
     }
 }
