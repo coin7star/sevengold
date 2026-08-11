@@ -27,6 +27,7 @@ import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
+import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.SubscriptionBanner
@@ -146,7 +147,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "🔥 Sinyal Aktif",
+                "Sinyal Aktif",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -175,13 +176,16 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
                 )
             }
         } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(end = 4.dp)
-            ) {
-                items(signals, key = { it.id }) { signal ->
-                    Box(Modifier.width(320.dp)) {
-                        SignalCard(signal)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val cardWidth = (maxWidth * 0.86f).coerceIn(280.dp, 420.dp)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(end = 4.dp)
+                ) {
+                    items(signals, key = { it.id }) { signal ->
+                        Box(Modifier.width(cardWidth)) {
+                            SignalCard(signal)
+                        }
                     }
                 }
             }
@@ -198,32 +202,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
 
 @Composable
 private fun HistorySignalsSection(signals: List<Signal>) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            "📚 Riwayat Sinyal",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        if (signals.isEmpty()) {
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Text(
-                    "Belum ada riwayat sinyal.",
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            signals.forEach { signal ->
-                SignalCard(signal)
-            }
-        }
-    }
+    CompactSignalHistorySection(signals = signals) { signal -> SignalCard(signal) }
 }
 
 @Composable

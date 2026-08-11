@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -17,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -27,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
+import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
+import com.sevengold.signalapp.ui.common.LockedSignalCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.SubscriptionBanner
@@ -197,7 +197,7 @@ private fun ActiveSignalsSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "🔥 Sinyal Aktif",
+                "Sinyal Aktif",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -226,13 +226,16 @@ private fun ActiveSignalsSection(
                 )
             }
         } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(end = 4.dp)
-            ) {
-                items(signals, key = { it.id }) { signal ->
-                    Box(Modifier.width(320.dp)) {
-                        if (locked) LockedSignalCard(signal) else signal.let { }
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val cardWidth = (maxWidth * 0.86f).coerceIn(280.dp, 420.dp)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(end = 4.dp)
+                ) {
+                    items(signals, key = { it.id }) { signal ->
+                        Box(Modifier.width(cardWidth)) {
+                            if (locked) LockedSignalCard(signal)
+                        }
                     }
                 }
             }
@@ -252,32 +255,7 @@ private fun HistorySignalsSection(
     signals: List<Signal>,
     locked: Boolean
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            "📚 Riwayat Sinyal",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        if (signals.isEmpty()) {
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Text(
-                    "Belum ada riwayat sinyal.",
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            signals.forEach { signal ->
-                LockedSignalCard(signal)
-            }
-        }
-    }
+    CompactSignalHistorySection(signals = signals, locked = locked) { signal -> LockedSignalCard(signal) }
 }
 
 @Composable
@@ -329,41 +307,3 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
     }
 }
 
-@Composable
-private fun LockedSignalCard(signal: Signal) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            Modifier
-                .padding(16.dp)
-                .blur(6.dp)
-        ) {
-            Text("${signal.type} ${signal.pair}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text("Entry: 2 3•4.5•", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("TP: 23•6.••", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("SL: 23•2.••", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Box(
-            Modifier.matchParentSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(SignalGradients.premiumBadge)
-                    .padding(horizontal = 14.dp, vertical = 7.dp)
-            ) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = Color(0xFF241A02), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Khusus Member Premium", style = MaterialTheme.typography.labelMedium, color = Color(0xFF241A02), fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}

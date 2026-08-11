@@ -10,6 +10,30 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## V24.3 — Riwayat Sinyal Ringkas & Responsive UI
+
+Perbaikan UI berfokus pada penggunaan harian di HP sekaligus tetap nyaman di tablet, landscape, split-screen, dan layar yang lebih besar.
+
+- **Riwayat sinyal tidak lagi memanjang panjang ke bawah.** Beranda hanya menampilkan **5 riwayat terbaru** dalam bentuk compact list.
+- Tombol **Lihat semua riwayat** membuka dialog yang dapat di-scroll, sehingga seluruh riwayat tetap tersedia tanpa membuat halaman utama terlalu panjang.
+- Riwayat Premium menampilkan informasi ringkas: arah, pair, status, Entry/TP/SL, dan waktu.
+- Riwayat USER tetap terkunci dengan tampilan ringkas dan tidak membocorkan detail harga.
+- **Kartu sinyal aktif adaptif**: lebar kartu mengikuti ukuran layar, dengan batas nyaman agar tidak terlalu kecil di HP atau terlalu melebar di tablet.
+- Judul bagian dibuat lebih bersih dan profesional tanpa emoji dekoratif yang berlebihan.
+- Status pada daftar ringkas menggunakan label pendek (**Aktif, TP, SL, BE, Batal**) agar mudah dipindai.
+- Performa, banner Premium, profil, dan navigasi tetap memakai `AdaptiveAppFrame`, sehingga perubahan ini tidak mengubah alur Firebase/Auth/FCM yang sudah bekerja.
+
+### Pola tampilan baru
+
+```text
+Beranda
+├── Sinyal Aktif       → horizontal, responsif
+├── Status Premium     → compact
+├── Performa           → ringkas
+└── Riwayat Sinyal     → 5 item terbaru
+    └── Lihat semua    → dialog scrollable
+```
+
 ## Update terbaru
 
 - **V24 — Premium Push tanpa Firebase Cloud Functions** — jalur push real-time dipindahkan ke Cloudflare Worker yang aman. Admin Panel mengirim Firebase ID token + event ke Worker, Worker memverifikasi UID admin lalu mengirim FCM HTTP v1 langsung ke topic `premium_signals`. **FCM tetap gratis dan project Firebase tidak perlu di-upgrade ke Blaze hanya untuk push.**
