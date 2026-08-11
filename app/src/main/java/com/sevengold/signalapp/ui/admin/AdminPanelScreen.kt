@@ -44,6 +44,7 @@ import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.ui.auth.GoldButton
 import com.sevengold.signalapp.ui.common.ProfileScreen
+import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.rupiah
 import com.sevengold.signalapp.ui.theme.DangerRed
@@ -117,15 +118,17 @@ fun AdminPanelScreen(
                 )
             )
 
-            when (tab) {
-                AdminTab.PUBLISH -> PublishSignalTab(adminUid)
-                AdminTab.SIGNALS -> ManageSignalsTab()
-                AdminTab.CODES -> ManageCodesTab(adminUid)
-                AdminTab.PACKAGES -> SubscriptionPackagesTab()
-                AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
-                AdminTab.USERS -> ManageUsersTab()
-                AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
-                AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+            AdaptiveAppFrame {
+                when (tab) {
+                    AdminTab.PUBLISH -> PublishSignalTab(adminUid)
+                    AdminTab.SIGNALS -> ManageSignalsTab()
+                    AdminTab.CODES -> ManageCodesTab(adminUid)
+                    AdminTab.PACKAGES -> SubscriptionPackagesTab()
+                    AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
+                    AdminTab.USERS -> ManageUsersTab()
+                    AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
+                    AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                }
             }
         }
 
@@ -959,53 +962,135 @@ private fun PackageEditorDialog(
 private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
     val orders by vm.orders.collectAsState()
     val message by vm.message.collectAsState()
-    Column(Modifier.fillMaxSize()) {
-        Text(
-            "Persetujuan Langganan Manual",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            "Pengguna dan member Premium membuat pesanan dari paket. Setelah pembayaran diverifikasi, setujui pesanan di sini. Setelah disetujui, akun otomatis diaktifkan sebagai Premium dan durasinya ditambahkan.",
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (!message.isNullOrBlank()) Text(message ?: "", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary)
-        if (orders.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Belum ada pesanan yang menunggu persetujuan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val compact = maxWidth < 420.dp
+
+        Column(Modifier.fillMaxSize()) {
+            Text(
+                "Persetujuan Langganan Manual",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Pengguna dan member Premium membuat pesanan dari paket. Setelah pembayaran diverifikasi, setujui pesanan di sini. Setelah disetujui, akun otomatis diaktifkan sebagai Premium dan durasinya ditambahkan.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (!message.isNullOrBlank()) {
+                Text(
+                    message ?: "",
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(orders) { order ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(order.packageName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(com.sevengold.signalapp.ui.common.rupiah(order.price), fontWeight = FontWeight.Bold, color = GoldPrimary)
-                            }
-                            Text("${order.email.ifBlank { order.uid }} • +${order.durationDays} hari")
-                            if (order.discountPercent > 0) {
+
+            if (orders.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Belum ada pesanan yang menunggu persetujuan.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    items(orders, key = { it.id }) { order ->
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Column(
+                                Modifier.padding(if (compact) 14.dp else 18.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (compact) {
+                                    Text(
+                                        order.packageName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        rupiah(order.price),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldPrimary
+                                    )
+                                } else {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            order.packageName,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        Text(
+                                            rupiah(order.price),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldPrimary
+                                        )
+                                    }
+                                }
+
                                 Text(
-                                    "Harga ${com.sevengold.signalapp.ui.common.rupiah(order.originalPrice)} → diskon ${order.discountPercent}% → bayar ${com.sevengold.signalapp.ui.common.rupiah(order.price)}",
+                                    "${order.email.ifBlank { order.uid }} • +${order.durationDays} hari",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (order.discountPercent > 0) {
+                                    Text(
+                                        "Harga ${rupiah(order.originalPrice)} → diskon ${order.discountPercent}% → bayar ${rupiah(order.price)}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                } else {
+                                    Text(
+                                        "Total bayar: ${rupiah(order.price)}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Text(
+                                    "Order: ${order.id}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Status: MENUNGGU PEMBAYARAN / PERSETUJUAN",
                                     style = MaterialTheme.typography.labelSmall
                                 )
-                            } else {
-                                Text(
-                                    "Total bayar: ${com.sevengold.signalapp.ui.common.rupiah(order.price)}",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                            Text("Order: ${order.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Status: MENUNGGU PEMBAYARAN / PERSETUJUAN", style = MaterialTheme.typography.labelSmall)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { vm.approve(order.id) }) { Text("Setujui") }
-                                OutlinedButton(onClick = { vm.reject(order.id) }) { Text("Tolak") }
+
+                                if (compact) {
+                                    Column(
+                                        Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { vm.approve(order.id) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text("Setujui") }
+                                        OutlinedButton(
+                                            onClick = { vm.reject(order.id) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text("Tolak") }
+                                    }
+                                } else {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(onClick = { vm.approve(order.id) }) { Text("Setujui") }
+                                        OutlinedButton(onClick = { vm.reject(order.id) }) { Text("Tolak") }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1175,30 +1260,39 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(6.dp))
-            Row(
+            LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 16.dp)
             ) {
-                FilterChip(
-                    selected = selectedRoleFilter == null,
-                    onClick = { selectedRoleFilter = null },
-                    label = { Text("Semua (${users.size})") }
-                )
-                FilterChip(
-                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.USER,
-                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.USER },
-                    label = { Text("PENGGUNA (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.USER }})") }
-                )
-                FilterChip(
-                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.PREMIUM,
-                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.PREMIUM },
-                    label = { Text("PREMIUM (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM }})") }
-                )
-                FilterChip(
-                    selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.ADMIN,
-                    onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.ADMIN },
-                    label = { Text("ADMINISTRATOR (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.ADMIN }})") }
-                )
+                item {
+                    FilterChip(
+                        selected = selectedRoleFilter == null,
+                        onClick = { selectedRoleFilter = null },
+                        label = { Text("Semua (${users.size})") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.USER,
+                        onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.USER },
+                        label = { Text("PENGGUNA (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.USER }})") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.PREMIUM,
+                        onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.PREMIUM },
+                        label = { Text("PREMIUM (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM }})") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.ADMIN,
+                        onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.ADMIN },
+                        label = { Text("ADMINISTRATOR (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.ADMIN }})") }
+                    )
+                }
             }
         }
 

@@ -1021,3 +1021,11 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Menambahkan BackHandler untuk menutup drawer dengan tombol Back Android.
 - Drawer gestures tetap diaktifkan untuk swipe close/open.
 - Tidak mengubah logic Firebase, referral, voucher, subscription, signal, maupun Admin.
+
+
+## V25.3 — Responsive UI
+- Added adaptive content width for admin, user, premium and profile screens.
+- Subscription approval cards adapt to compact phone widths: price/header stacks and action buttons become full width.
+- Admin role filters are horizontally scrollable on narrow screens instead of overflowing.
+- Desktop/tablet layouts use a readable maximum content width while phones use available width with safe padding.
+- Existing Firebase, referral, voucher, subscription, signal and drawer logic is unchanged.

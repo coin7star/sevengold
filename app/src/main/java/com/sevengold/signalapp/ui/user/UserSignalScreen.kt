@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
+import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
 import com.sevengold.signalapp.ui.common.LockedSignalCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
@@ -174,7 +175,8 @@ fun UserSignalScreen(
         }
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
-            when (tab) {
+            AdaptiveAppFrame {
+                when (tab) {
                 UserTab.SIGNALS -> {
                     val activeSignals = remember(signals) {
                         signals.filter { it.status == com.sevengold.signalapp.data.model.SignalStatus.ACTIVE }
@@ -201,7 +203,8 @@ fun UserSignalScreen(
                         item { HistorySignalsSection(signals = historySignals, locked = true) }
                     }
                 }
-                UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                    UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                }
             }
         }
     }

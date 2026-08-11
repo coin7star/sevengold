@@ -32,6 +32,7 @@ import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
+import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
@@ -160,7 +161,8 @@ fun PremiumSignalScreen(
         }
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
-            when (tab) {
+            AdaptiveAppFrame {
+                when (tab) {
                 PremiumTab.SIGNALS -> {
                     val activeSignals = remember(signals) {
                         signals.filter { it.status == SignalStatus.ACTIVE }
@@ -182,7 +184,8 @@ fun PremiumSignalScreen(
                         item { HistorySignalsSection(signals = historySignals) }
                     }
                 }
-                PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                    PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                }
             }
         }
     }
