@@ -6,6 +6,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import android.util.Log
 import com.sevengold.signalapp.MainActivity
 import com.sevengold.signalapp.R
 
@@ -25,6 +26,7 @@ class SignalNotificationService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "Update Sinyal"
         val body = message.notification?.body ?: message.data["body"] ?: ""
 
+        Log.d("PremiumPush", "FCM received: event=${message.data["event"] ?: "notification"}")
         showNotification(title, body)
     }
 

@@ -25,6 +25,7 @@ object PremiumPushGateway {
 
     suspend fun notifySignal(event: String, signal: Signal): Result<Unit> = withContext(Dispatchers.IO) {
         val endpoint = BuildConfig.PUSH_WEBHOOK_URL.trim()
+        Log.d(TAG, "Push Worker endpoint configured: ${endpoint.isNotBlank()} (${endpoint.take(40)})")
         if (endpoint.isBlank()) {
             return@withContext Result.failure(
                 IllegalStateException("URL Cloudflare Push Worker belum dikonfigurasi")
@@ -86,8 +87,14 @@ object PremiumPushGateway {
 
             if (code !in 200..299) {
                 Log.e(TAG, "Webhook push gagal HTTP $code: $responseText")
+                val detail = responseText
+                    .replace(Regex("\\s+"), " ")
+                    .take(180)
                 return@withContext Result.failure(
-                    IllegalStateException("Webhook push gagal (HTTP $code)")
+                    IllegalStateException(
+                        if (detail.isBlank()) "Webhook push gagal (HTTP $code)"
+                        else "Webhook push gagal (HTTP $code): $detail"
+                    )
                 )
             }
 

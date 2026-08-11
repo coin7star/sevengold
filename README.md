@@ -828,3 +828,71 @@ Untuk debugging, aktifkan:
 - **Persist Logs to Workers Dashboard: ON**
 
 Jika Cloudflare menampilkan peringatan bahwa konfigurasi Wrangler berbeda dengan Dashboard, pastikan konfigurasi repository tetap konsisten dengan Worker `sevengoldapp` sebelum deployment berikutnya.
+
+---
+
+## V24.2 — Push Worker URL build fix
+
+V24.2 memperbaiki penyebab APK dapat ter-build tetapi tidak pernah memanggil Cloudflare Worker.
+
+### Penyebab
+
+`app/build.gradle.kts` sebelumnya menggunakan URL kosong jika `SEVENGOLD_PUSH_WEBHOOK_URL` tidak diteruskan oleh GitHub Actions. Workflow lama memang belum meneruskan secret tersebut ke Gradle.
+
+Akibatnya:
+
+```text
+Admin APK
+   ↓
+Firestore ✅
+   ↓
+PremiumPushGateway
+   ↓
+URL Worker kosong ❌
+   ↓
+Cloudflare Worker tidak menerima request
+```
+
+### Perbaikan
+
+V24.2:
+
+- menggunakan fallback production URL:
+  `https://sevengoldapp.coin7star.workers.dev`
+- tetap mendukung GitHub Actions secret:
+  `SEVENGOLD_PUSH_WEBHOOK_URL`
+- workflow meneruskan secret ke Gradle bila tersedia
+- gateway menulis diagnostic log tanpa mencetak token Firebase
+- response error Worker ditampilkan secara terbatas agar mudah didiagnosis
+- FCM notification service mencatat event yang diterima di Logcat
+- Worker tetap menggunakan `premium_signals` sebagai topic Premium
+
+### GitHub Secret
+
+Disarankan tetap membuat:
+
+```text
+SEVENGOLD_PUSH_WEBHOOK_URL
+```
+
+dengan value:
+
+```text
+https://sevengoldapp.coin7star.workers.dev
+```
+
+Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, tetapi repository secret tetap lebih mudah dipelihara jika URL Worker berubah di masa depan.
+
+### Test V24.2
+
+1. Build APK baru dari GitHub Actions.
+2. Install APK baru di HP Admin.
+3. Install APK baru di HP Premium.
+4. Login Premium dan pastikan status Premium aktif.
+5. Izinkan notifikasi Android.
+6. Buka Cloudflare:
+   **Workers & Pages → sevengoldapp → Observability → Live**.
+7. Dari HP Admin, publish satu sinyal.
+8. Harus muncul invocation `POST` pada Worker.
+9. Jika HTTP `200`, Worker sudah berhasil menerima dan meneruskan request ke FCM.
+10. Jika HTTP `401/403/500`, buka detail event untuk melihat error Worker.

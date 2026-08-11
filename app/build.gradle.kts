@@ -5,8 +5,10 @@ plugins {
 }
 
 android {
+    // Public Worker endpoint. A Gradle property / environment variable can override it,
+    // but the default prevents an APK from silently being built without a push endpoint.
     val pushWebhookUrl = providers.gradleProperty("SEVENGOLD_PUSH_WEBHOOK_URL")
-        .orElse(System.getenv("SEVENGOLD_PUSH_WEBHOOK_URL") ?: "")
+        .orElse(System.getenv("SEVENGOLD_PUSH_WEBHOOK_URL") ?: "https://sevengoldapp.coin7star.workers.dev")
         .get()
 
     namespace = "com.sevengold.signalapp"
