@@ -2,6 +2,7 @@
 
 package com.sevengold.signalapp.ui.premium
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -60,11 +62,15 @@ fun PremiumSignalScreen(
     var tab by remember { mutableStateOf(PremiumTab.SIGNALS) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    BackHandler(enabled = drawerState.isOpen) {
+        drawerScope.launch { drawerState.close() }
+    }
     var showPackagesSheet by remember { mutableStateOf(false) }
     LaunchedEffect(user.uid) { subscriptionVm.startListeningOrders(user.uid) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.fillMaxWidth(),
@@ -77,7 +83,7 @@ fun PremiumSignalScreen(
                             Text("Menu aplikasi", style = MaterialTheme.typography.labelMedium)
                         }
                         IconButton(onClick = { drawerScope.launch { drawerState.close() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Tutup menu")
+                            Icon(Icons.Filled.Close, contentDescription = "Tutup menu")
                         }
                     }
                     NavigationDrawerItem(

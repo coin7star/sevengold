@@ -1010,7 +1010,14 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - No business logic, Firebase data model, referral, voucher, subscription, approval, signal, or admin functionality was intentionally changed.
 
 
-## V25.1 — Full UI Refresh Build Fix
+## V25.2 — Full UI Refresh Build Fix
 
 - Fixed missing `androidx.compose.ui.graphics.Color` import in `MainActivity.kt`.
 - No application logic or UI redesign features were otherwise changed.
+
+
+## V25.2 UI Fix
+- Memperbaiki drawer User dan Premium agar tombol tutup menggunakan ikon Close yang jelas.
+- Menambahkan BackHandler untuk menutup drawer dengan tombol Back Android.
+- Drawer gestures tetap diaktifkan untuk swipe close/open.
+- Tidak mengubah logic Firebase, referral, voucher, subscription, signal, maupun Admin.
