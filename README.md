@@ -1008,3 +1008,9 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Subtle full-app background treatment while preserving the existing dark/gold identity.
 - Signal history and performance sections use a cleaner, less box-heavy presentation.
 - No business logic, Firebase data model, referral, voucher, subscription, approval, signal, or admin functionality was intentionally changed.
+
+
+## V25.1 — Full UI Refresh Build Fix
+
+- Fixed missing `androidx.compose.ui.graphics.Color` import in `MainActivity.kt`.
+- No application logic or UI redesign features were otherwise changed.
