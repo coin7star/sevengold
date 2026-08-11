@@ -12,7 +12,7 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ## Update terbaru
 
-- **V21 — Penyempurnaan Bahasa UI & Peran** — seluruh teks yang tampil kepada pengguna diseragamkan ke Bahasa Indonesia yang lebih profesional, jelas, dan mudah dipahami. Terminologi untuk **Pengguna, Premium, dan Administrator** diperjelas, termasuk status pesanan, persetujuan langganan, pencarian pengguna, profil, referal, voucher, dan tindakan di Panel Administrator. Istilah teknis trading seperti **BUY, SELL, Entry, TP, SL, BE, dan UID** tetap dipertahankan agar tidak mengubah makna teknis.
+- **V22 — Premium Push Notification Otomatis & Reliable** — subscription FCM kini otomatis mengikuti status Premium aktif, termasuk unsubscribe saat logout/expired dan sinkronisasi real-time berdasarkan profil user. Notifikasi sinyal baru serta TP/SL/BE/Cancel tetap dikirim melalui topic `premium_signals` dan dapat tampil saat aplikasi berada di background atau ditutup, selama permission notifikasi dan Cloud Functions sudah aktif.\n\n- **V21 — Penyempurnaan Bahasa UI & Peran** — seluruh teks yang tampil kepada pengguna diseragamkan ke Bahasa Indonesia yang lebih profesional, jelas, dan mudah dipahami. Terminologi untuk **Pengguna, Premium, dan Administrator** diperjelas, termasuk status pesanan, persetujuan langganan, pencarian pengguna, profil, referal, voucher, dan tindakan di Panel Administrator. Istilah teknis trading seperti **BUY, SELL, Entry, TP, SL, BE, dan UID** tetap dipertahankan agar tidak mengubah makna teknis.
 
 
 - **V20 — Responsive / Adaptive UI** — seluruh navigation/content sekarang memakai `AdaptiveAppFrame` berbasis `available window width`. Layout otomatis menyesuaikan HP, tablet, landscape, split-screen, dan foldable dengan breakpoint 600dp/840dp serta batas lebar content agar layar besar tidak terlihat terlalu melebar.
@@ -102,6 +102,55 @@ firebase deploy --only functions
 ```
 
 Jika Firebase CLI belum terpasang, gunakan Firebase CLI sesuai environment yang kamu pakai. **Cloud Function `onReferralSubscriptionActivated` wajib ter-deploy** karena fungsi inilah yang memberi bonus 2 hari secara server-side.
+
+## V22 — Premium Push Notification Otomatis & Reliable
+
+Notifikasi sinyal Premium sekarang disinkronkan otomatis berdasarkan status Premium yang aktif.
+
+### Perilaku notifikasi
+
+- **PREMIUM aktif** → perangkat otomatis subscribe ke topic FCM `premium_signals`.
+- **USER / Premium expired / ADMIN** → perangkat otomatis unsubscribe dari topic tersebut.
+- Jika masa Premium habis ketika aplikasi tetap terbuka, aplikasi menjadwalkan unsubscribe tepat setelah waktu expiry.
+- Saat login atau profil user berubah, status subscription FCM disinkronkan kembali secara real-time.
+- Saat logout, perangkat langsung unsubscribe dari topic Premium.
+- Notifikasi dapat diterima saat aplikasi berada di **background** atau **ditutup**, selama izin notifikasi Android aktif dan Firebase Cloud Functions sudah ter-deploy.
+- Event yang dikirim ke Premium meliputi **Sinyal Baru, TP HIT, SL, Break Even, dan Sinyal Dibatalkan**.
+- User biasa tidak menerima topic `premium_signals`.
+
+### Alur
+
+```text
+Admin publish/update sinyal
+        │
+        ▼
+Firestore /signals
+        │
+        ▼
+Cloud Functions
+        │
+        ▼
+FCM topic: premium_signals
+        │
+        ├── PREMIUM aktif → menerima notif
+        └── USER / expired / ADMIN → tidak subscribe
+```
+
+### Syarat agar push benar-benar muncul
+
+1. Firebase Cloud Messaging aktif pada project Firebase.
+2. Android 13+ sudah memberikan izin **Notifikasi**.
+3. Cloud Functions sudah di-deploy:
+   ```bash
+   cd functions
+   npm install
+   cd ..
+   firebase deploy --only functions
+   ```
+4. Device Premium sudah login dan profil user terbaca sebagai `PREMIUM` dengan `premiumExpiryMillis` yang masih aktif.
+5. Device memiliki koneksi internet.
+
+> **Catatan:** metode topic messaging ini sangat cocok untuk broadcast sinyal Premium. Sinkronisasi role dilakukan dari Android berdasarkan data Firestore. Jika akun sudah expired ketika aplikasi benar-benar tidak pernah dibuka lagi setelah expiry, perangkat baru melakukan unsubscribe saat aplikasi kembali aktif; untuk kontrol expiry server-side yang lebih ketat per-device diperlukan arsitektur FCM token registry.
 
 ## 1. Setup Firebase
 
