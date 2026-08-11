@@ -17,8 +17,10 @@ import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,14 +58,25 @@ fun AdminPanelScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
 
+    BackHandler(enabled = drawerState.currentValue == DrawerValue.Open) {
+        drawerScope.launch { drawerState.close() }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
+        scrimColor = Color.Black.copy(alpha = 0.45f),
         drawerContent = {
             // Custom full-screen admin drawer.
             // ModalDrawerSheet applies a platform/default maximum width, which made
             // the admin menu appear clipped on some phone layouts.
+            // Keep the drawer inside the bounds supplied by ModalNavigationDrawer.
+            // fillMaxSize() here lets it occupy the full available device width/height
+            // without leaving a fixed-width clipped panel.
             Surface(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Column(Modifier.fillMaxHeight()) {
@@ -85,7 +98,7 @@ fun AdminPanelScreen(
                         IconButton(onClick = {
                             drawerScope.launch { drawerState.close() }
                         }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Tutup menu")
+                            Icon(Icons.Filled.Close, contentDescription = "Tutup menu")
                         }
                     }
 
