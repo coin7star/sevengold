@@ -12,6 +12,8 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ## Update terbaru
 
+- **V20 — Responsive / Adaptive UI** — seluruh navigation/content sekarang memakai `AdaptiveAppFrame` berbasis `available window width`. Layout otomatis menyesuaikan HP, tablet, landscape, split-screen, dan foldable dengan breakpoint 600dp/840dp serta batas lebar content agar layar besar tidak terlihat terlalu melebar.
+
 - **Fix error compile setelah UI premium** — dua bug Kotlin yang bikin GitHub Actions gagal build (`compileDebugKotlin FAILED`):
   1. `PerformanceSummaryCard.kt` — pemanggilan `Modifier.background(...)` di selector periode mencampur tipe `Brush` dan `Color` dalam satu `if/else`, yang bikin compiler bingung pilih overload. Diperbaiki dengan menyamakan tipe (pakai `SolidColor` transparan untuk kondisi tidak terpilih).
   2. `Theme.kt` — pemakaian `Typography.merge(...)`, yang sebenarnya fungsi Material 2 dan tidak ada di Material 3. Diganti jadi pemakaian langsung `Typography` custom tanpa merge.
@@ -469,3 +471,26 @@ Panel **Admin → Users** sekarang memiliki pencarian user yang lebih jelas dan 
 - Menambahkan import `Icons.Filled.Search` dan `Icons.Filled.Clear` yang sebelumnya belum dideklarasikan, sehingga error `Unresolved reference: Search` dan `Unresolved reference: Clear` tidak lagi terjadi pada source tersebut.
 - Fitur pencarian UID/email dari V18 tetap dipertahankan; tidak ada perubahan pada Firestore schema, collection, index, atau Rules.
 
+
+
+## V20 — Responsive / Adaptive UI
+
+UI SevenGold sekarang menggunakan **adaptive layout berbasis lebar window**, bukan mendeteksi merek atau tipe device tertentu.
+
+Perilaku utama:
+- **HP / layar kecil (< 600dp):** layout tetap compact dengan padding 16dp.
+- **Tablet / layar medium (600–839dp):** padding 24dp dan content dibatasi sekitar 960dp.
+- **Tablet besar / landscape (≥ 840dp):** padding 32dp dan content dibatasi sekitar 1200dp.
+- **Split-screen dan foldable:** ikut menyesuaikan berdasarkan ukuran window yang tersedia.
+- Konten pada layar besar tetap berada di tengah agar tidak melebar berlebihan.
+- Perubahan ini bersifat global melalui `AdaptiveAppFrame`, sehingga screen yang sudah ada ikut mendapatkan perilaku responsive tanpa mengubah alur fitur Firebase/Auth.
+
+### Catatan implementasi
+
+Breakpoint menggunakan `dp` dari **available window width**, sehingga aplikasi tidak bergantung pada nama/model device. Ini membuat layout lebih aman untuk HP portrait, HP landscape, tablet portrait, tablet landscape, split-screen, dan device baru.
+
+File utama:
+`app/src/main/java/com/sevengold/signalapp/ui/common/AdaptiveLayout.kt`
+
+Integrasi utama:
+`app/src/main/java/com/sevengold/signalapp/ui/navigation/AppNav.kt`

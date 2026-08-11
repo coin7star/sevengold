@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sevengold.signalapp.data.model.Role
 import com.sevengold.signalapp.ui.admin.AdminPanelScreen
+import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.auth.LoginScreen
 import com.sevengold.signalapp.ui.auth.RegisterScreen
 import com.sevengold.signalapp.ui.premium.PremiumSignalScreen
@@ -37,7 +38,12 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
 
     val startDestination = if (sessionViewModel.currentUid() != null) Routes.HOME else Routes.LOGIN
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    AdaptiveAppFrame {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = Modifier.fillMaxSize()
+        ) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
@@ -101,6 +107,7 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
                     UserSignalScreen(uid = uid, user = currentUser, onLogout = onLogout)
                 }
             }
+        }
         }
     }
 }
