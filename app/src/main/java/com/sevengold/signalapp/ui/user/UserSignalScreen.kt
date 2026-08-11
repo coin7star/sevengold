@@ -81,7 +81,7 @@ fun UserSignalScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.widthIn(min = 280.dp, max = 340.dp),
+                modifier = Modifier.fillMaxWidth(),
                 drawerContainerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(Modifier.fillMaxHeight()) {

@@ -941,3 +941,8 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 8. Harus muncul invocation `POST` pada Worker.
 9. Jika HTTP `200`, Worker sudah berhasil menerima dan meneruskan request ke FCM.
 10. Jika HTTP `401/403/500`, buka detail event untuk melihat error Worker.
+
+
+## V24.7 – Full-width mobile drawer
+- Drawer menu on User/Premium screens now expands to the available device width instead of a narrow fixed 280–340dp sheet.
+- Existing V24.6 features and business logic are preserved.
