@@ -24,7 +24,7 @@ class AuthViewModel(
 
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
-            _state.value = AuthUiState(error = "Email dan password wajib diisi")
+            _state.value = AuthUiState(error = "Email dan kata sandi wajib diisi")
             return
         }
         _state.value = AuthUiState(loading = true)
@@ -32,22 +32,22 @@ class AuthViewModel(
             val result = repo.login(email.trim(), password)
             _state.value = result.fold(
                 onSuccess = { AuthUiState(success = true) },
-                onFailure = { AuthUiState(error = it.message ?: "Login gagal") }
+                onFailure = { AuthUiState(error = it.message ?: "Gagal masuk") }
             )
         }
     }
 
     fun register(email: String, password: String, confirmPassword: String, referralCode: String = "") {
         if (email.isBlank() || password.isBlank()) {
-            _state.value = AuthUiState(error = "Email dan password wajib diisi")
+            _state.value = AuthUiState(error = "Email dan kata sandi wajib diisi")
             return
         }
         if (password.length < 6) {
-            _state.value = AuthUiState(error = "Password minimal 6 karakter")
+            _state.value = AuthUiState(error = "Kata sandi minimal 6 karakter")
             return
         }
         if (password != confirmPassword) {
-            _state.value = AuthUiState(error = "Konfirmasi password tidak cocok")
+            _state.value = AuthUiState(error = "Konfirmasi kata sandi tidak cocok")
             return
         }
         _state.value = AuthUiState(loading = true)

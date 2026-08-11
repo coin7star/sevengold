@@ -12,6 +12,9 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ## Update terbaru
 
+- **V21 — Penyempurnaan Bahasa UI & Peran** — seluruh teks yang tampil kepada pengguna diseragamkan ke Bahasa Indonesia yang lebih profesional, jelas, dan mudah dipahami. Terminologi untuk **Pengguna, Premium, dan Administrator** diperjelas, termasuk status pesanan, persetujuan langganan, pencarian pengguna, profil, referal, voucher, dan tindakan di Panel Administrator. Istilah teknis trading seperti **BUY, SELL, Entry, TP, SL, BE, dan UID** tetap dipertahankan agar tidak mengubah makna teknis.
+
+
 - **V20 — Responsive / Adaptive UI** — seluruh navigation/content sekarang memakai `AdaptiveAppFrame` berbasis `available window width`. Layout otomatis menyesuaikan HP, tablet, landscape, split-screen, dan foldable dengan breakpoint 600dp/840dp serta batas lebar content agar layar besar tidak terlihat terlalu melebar.
 
 - **Fix error compile setelah UI premium** — dua bug Kotlin yang bikin GitHub Actions gagal build (`compileDebugKotlin FAILED`):

@@ -85,17 +85,17 @@ fun ProfileScreen(
         Spacer(Modifier.height(28.dp))
 
         InfoCard {
-            ProfileInfoRow("Role aktif", roleLabel(user.effectiveRole))
+            ProfileInfoRow("Peran aktif", roleLabel(user.effectiveRole))
 
             if (user.effectiveRole == Role.PREMIUM) {
                 Spacer(Modifier.height(12.dp))
                 val expiry = user.premiumExpiryMillis?.let { df.format(Date(it)) } ?: "-"
-                ProfileInfoRow("Premium sampai", expiry)
+                ProfileInfoRow("Premium berlaku sampai", expiry)
             }
 
             if (user.role == Role.PREMIUM && user.effectiveRole == Role.USER) {
                 Spacer(Modifier.height(12.dp))
-                ProfileInfoRow("Status", "Premium sudah habis")
+                ProfileInfoRow("Status", "Masa Premium telah berakhir")
             }
 
             Spacer(Modifier.height(12.dp))
@@ -113,7 +113,7 @@ fun ProfileScreen(
 
         // Penjelasan singkat per-role, supaya user awam tidak bingung fitur apa yang dia punya.
         InfoCard(accentText = true) {
-            Text("TENTANG ROLE KAMU", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+            Text("INFORMASI PERAN", style = MaterialTheme.typography.labelLarge, color = GoldLight)
             Spacer(Modifier.height(8.dp))
             Text(
                 roleDescription(user.effectiveRole),
@@ -153,39 +153,39 @@ private fun ReferralCard(user: AppUser) {
     val voucherCode = user.welcomeVoucherCode
 
     InfoCard(accentText = true) {
-        Text("PROGRAM REFERRAL", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+        Text("PROGRAM REFERAL", style = MaterialTheme.typography.labelLarge, color = GoldLight)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Ajak teman berlangganan. Setelah teman berhasil berlangganan, kamu otomatis mendapat bonus 2 hari Premium.",
+            "Ajak teman untuk berlangganan. Setelah teman berhasil berlangganan, Anda akan otomatis menerima bonus 2 hari Premium.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
-        ReferralCodeRow("Kode referral", referralCode) {
+        ReferralCodeRow("Kode referal", referralCode) {
             clipboard.setText(AnnotatedString(referralCode))
         }
         if (voucherCode.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            ReferralCodeRow("Voucher welcome", voucherCode) {
+            ReferralCodeRow("Voucher selamat datang", voucherCode) {
                 clipboard.setText(AnnotatedString(voucherCode))
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Diskon welcome: ${user.welcomeVoucherPercent}%. Voucher akan dimasukkan setelah kamu klik Beli Paket Premium.",
+                "Diskon selamat datang: ${user.welcomeVoucherPercent}%. Voucher dapat digunakan saat membeli paket Premium.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             Spacer(Modifier.height(8.dp))
             Text(
-                "Belum ada voucher welcome. Masukkan kode referral teman saat membuat akun untuk mendapatkannya.",
+                "Belum tersedia voucher selamat datang. Masukkan kode referal teman saat mendaftar untuk mendapatkannya.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            "Referral berhasil: ${user.referralSuccessfulCount} • Bonus terkumpul: ${user.referralRewardDaysEarned} hari Premium",
+            "Referal berhasil: ${user.referralSuccessfulCount} • Total bonus: ${user.referralRewardDaysEarned} hari Premium",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold
         )
@@ -256,13 +256,13 @@ private fun ProfileRoleBadge(role: Role) {
 }
 
 private fun roleLabel(role: Role): String = when (role) {
-    Role.ADMIN -> "Admin"
+    Role.ADMIN -> "Administrator"
     Role.PREMIUM -> "Premium"
-    Role.USER -> "User"
+    Role.USER -> "Pengguna"
 }
 
 private fun roleDescription(role: Role): String = when (role) {
-    Role.ADMIN -> "Kamu bisa publish & kelola sinyal (TP/SL/BE/Cancel), generate kode langganan, dan naik/turunin role user lain lewat tab Users."
-    Role.PREMIUM -> "Kamu bisa lihat semua sinyal secara penuh selama status premium masih aktif."
-    Role.USER -> "Sinyal masih tampil terkunci/blur. Redeem kode langganan dari admin untuk membuka semua sinyal secara penuh."
+    Role.ADMIN -> "Anda dapat menerbitkan dan mengelola sinyal (TP/SL/BE/Batalkan), membuat kode langganan, serta mengubah peran pengguna lain melalui menu Pengguna."
+    Role.PREMIUM -> "Anda dapat melihat seluruh sinyal secara lengkap selama masa Premium masih aktif."
+    Role.USER -> "Sinyal masih terkunci. Gunakan kode langganan dari administrator untuk membuka seluruh sinyal."
 }

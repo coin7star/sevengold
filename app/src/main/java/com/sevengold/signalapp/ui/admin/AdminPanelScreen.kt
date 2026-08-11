@@ -35,7 +35,7 @@ import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Publish"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Users"), REFERRAL("Referral"), PROFILE("Profil")
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
 }
 
 @Composable
@@ -54,7 +54,7 @@ fun AdminPanelScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = GoldPrimary)
                     Spacer(Modifier.width(8.dp))
-                    Text("Admin Panel", fontWeight = FontWeight.Bold)
+                    Text("Panel Administrator", fontWeight = FontWeight.Bold)
                 }
             },
             actions = {
@@ -112,7 +112,7 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("Publish Sinyal XAUUSD", style = MaterialTheme.typography.titleMedium)
+        Text("Terbitkan Sinyal XAUUSD", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(12.dp))
 
         Row {
@@ -182,7 +182,7 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
         }
 
         GoldButton(
-            text = "Publish Sinyal",
+            text = "Terbitkan Sinyal",
             loading = false,
             onClick = {
                 val signal = Signal(
@@ -255,7 +255,7 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.BE) }) { Text("Set BE") }
-                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.CANCELLED) }) { Text("Cancel") }
+                        TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.CANCELLED) }) { Text("Batalkan") }
                         TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.TP_HIT) }) { Text("TP Hit") }
                         TextButton(onClick = { vm.updateStatus(signal.id, SignalStatus.SL_HIT) }) { Text("SL Hit") }
                     }
@@ -343,7 +343,7 @@ private fun SubscriptionPackagesTab(vm: AdminViewModel = viewModel()) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Ubah harga, durasi, nama, label, dan status paket langsung dari panel admin. Perubahan berlaku untuk pembelian baru; order lama tetap memakai harga dan durasi yang tersimpan saat checkout.",
+            "Ubah harga, durasi, nama, label, dan status paket langsung dari panel administrator. Perubahan berlaku untuk pembelian baru; pesanan lama tetap menggunakan harga dan durasi yang tersimpan saat pembayaran.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -407,7 +407,7 @@ private fun SubscriptionPackagesTab(vm: AdminViewModel = viewModel()) {
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { editing = pkg }) {
-                            Text("Edit")
+                            Text("Ubah")
                         }
                         TextButton(
                             onClick = {
@@ -433,7 +433,7 @@ private fun SubscriptionPackagesTab(vm: AdminViewModel = viewModel()) {
     if (editing != null) {
         PackageEditorDialog(
             initial = editing!!,
-            title = "Edit Paket",
+            title = "Ubah Paket",
             onDismiss = { editing = null },
             onSave = { updated ->
                 vm.saveSubscriptionPackages(
@@ -554,13 +554,13 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
     val message by vm.message.collectAsState()
     Column(Modifier.fillMaxSize()) {
         Text(
-            "Approval Langganan Manual",
+            "Persetujuan Langganan Manual",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
         Text(
-            "User/Premium membuat pesanan dari paket. Setelah pembayaran kamu cek, approve di sini. Saat APPROVED, akun langsung diproses menjadi PREMIUM dan durasinya ditambahkan.",
+            "Pengguna dan member Premium membuat pesanan dari paket. Setelah pembayaran diverifikasi, setujui pesanan di sini. Setelah disetujui, akun otomatis diaktifkan sebagai Premium dan durasinya ditambahkan.",
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -568,7 +568,7 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
         if (!message.isNullOrBlank()) Text(message ?: "", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary)
         if (orders.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Belum ada pesanan yang menunggu approval.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Belum ada pesanan yang menunggu persetujuan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -595,9 +595,9 @@ private fun ManageSubscriptionOrdersTab(vm: SubscriptionAdminViewModel) {
                                 )
                             }
                             Text("Order: ${order.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Status: MENUNGGU PEMBAYARAN / APPROVAL", style = MaterialTheme.typography.labelSmall)
+                            Text("Status: MENUNGGU PEMBAYARAN / PERSETUJUAN", style = MaterialTheme.typography.labelSmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { vm.approve(order.id) }) { Text("Approve") }
+                                Button(onClick = { vm.approve(order.id) }) { Text("Setujui") }
                                 OutlinedButton(onClick = { vm.reject(order.id) }) { Text("Tolak") }
                             }
                         }
@@ -620,9 +620,9 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Custom Referral", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Pengaturan Referal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(
-            "Atur reward referral langsung dari panel admin. Perubahan berlaku untuk referral baru dan reward referral berikutnya.",
+            "Atur bonus referal langsung dari panel administrator. Perubahan berlaku untuk referal baru dan bonus berikutnya.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -631,8 +631,8 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Program referral", fontWeight = FontWeight.SemiBold)
-                        Text("Aktif/nonaktif referral", style = MaterialTheme.typography.bodySmall)
+                        Text("Program referal", fontWeight = FontWeight.SemiBold)
+                        Text("Aktif/nonaktif referal", style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
@@ -640,7 +640,7 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
                 OutlinedTextField(
                     value = rewardDays,
                     onValueChange = { rewardDays = it.filter(Char::isDigit) },
-                    label = { Text("Bonus Premium untuk referrer (hari)") },
+                    label = { Text("Bonus Premium untuk pemberi referal (hari)") },
                     supportingText = { Text("Contoh: 2 = +2 hari Premium") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -649,7 +649,7 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
                 OutlinedTextField(
                     value = voucherPercent,
                     onValueChange = { voucherPercent = it.filter(Char::isDigit) },
-                    label = { Text("Voucher welcome (%)") },
+                    label = { Text("Voucher selamat datang (%)") },
                     supportingText = { Text("Contoh: 10 = diskon 10% untuk teman baru") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -665,7 +665,7 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
                 }
 
                 GoldButton(
-                    text = "Simpan Pengaturan Referral",
+                    text = "Simpan Pengaturan Referal",
                     loading = false,
                     onClick = {
                         vm.updateReferralSettings(
@@ -681,8 +681,8 @@ private fun ReferralSettingsTab(adminUid: String, vm: AdminViewModel = viewModel
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Preview", fontWeight = FontWeight.SemiBold)
-                Text("Teman daftar dengan referral → voucher ${settings.welcomeVoucherPercent}%")
-                Text("Teman berhasil berlangganan → referrer +${settings.rewardPremiumDays} hari Premium")
+                Text("Teman mendaftar dengan referal → voucher ${settings.welcomeVoucherPercent}%")
+                Text("Teman berhasil berlangganan → pemberi referal +${settings.rewardPremiumDays} hari Premium")
                 Text("Status: ${if (settings.enabled) "Aktif" else "Nonaktif"}")
             }
         }
@@ -733,7 +733,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text(
-                "Cari User",
+                "Cari Pengguna",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -743,11 +743,11 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 onValueChange = { userSearchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                placeholder = { Text("Cari email atau UID...") },
+                placeholder = { Text("Cari berdasarkan email atau UID...") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Search,
-                        contentDescription = "Cari user"
+                        contentDescription = "Cari pengguna"
                     )
                 },
                 trailingIcon = {
@@ -763,7 +763,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Filter Role",
+                "Filter Peran",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -780,7 +780,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 FilterChip(
                     selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.USER,
                     onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.USER },
-                    label = { Text("USER (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.USER }})") }
+                    label = { Text("PENGGUNA (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.USER }})") }
                 )
                 FilterChip(
                     selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.PREMIUM,
@@ -790,7 +790,7 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                 FilterChip(
                     selected = selectedRoleFilter == com.sevengold.signalapp.data.model.Role.ADMIN,
                     onClick = { selectedRoleFilter = com.sevengold.signalapp.data.model.Role.ADMIN },
-                    label = { Text("ADMIN (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.ADMIN }})") }
+                    label = { Text("ADMINISTRATOR (${users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.ADMIN }})") }
                 )
             }
         }
@@ -802,9 +802,9 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
             item {
                 Text(
                     if (userSearchQuery.isBlank()) {
-                        "${filteredUsers.size} user ditampilkan"
+                        "${filteredUsers.size} pengguna ditampilkan"
                     } else {
-                        "${filteredUsers.size} user cocok dari ${users.size} user"
+                        "${filteredUsers.size} pengguna ditemukan dari ${users.size} pengguna"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -821,12 +821,12 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                "User tidak ditemukan",
+                                "Pengguna tidak ditemukan",
                                 style = MaterialTheme.typography.titleSmall
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Coba cek kembali email atau UID yang dicari.",
+                                "Periksa kembali email atau UID yang Anda masukkan.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -875,7 +875,7 @@ private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserMa
             if (user.role == com.sevengold.signalapp.data.model.Role.PREMIUM) {
                 val expiryText = user.premiumExpiryMillis?.let { df.format(java.util.Date(it)) } ?: "-"
                 Text(
-                    if (user.isPremiumActive) "Premium sampai: $expiryText" else "Premium expired: $expiryText",
+                    if (user.isPremiumActive) "Premium berlaku sampai: $expiryText" else "Premium telah berakhir: $expiryText",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -884,9 +884,9 @@ private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserMa
             if (user.effectiveRole != com.sevengold.signalapp.data.model.Role.ADMIN) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (user.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM) {
-                        TextButton(onClick = { vm.setUser(user.uid) }) { Text("Turunkan ke USER") }
+                        TextButton(onClick = { vm.setUser(user.uid) }) { Text("Ubah ke Pengguna") }
                     } else {
-                        TextButton(onClick = { showPremiumInput = !showPremiumInput }) { Text("Jadikan PREMIUM") }
+                        TextButton(onClick = { showPremiumInput = !showPremiumInput }) { Text("Aktifkan Premium") }
                     }
                 }
 

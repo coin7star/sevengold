@@ -141,7 +141,7 @@ internal fun BrandMark() {
         textAlign = TextAlign.Center
     )
     Text(
-        "XAUUSD Signal — Premium Trading Alerts",
+        "XAUUSD Signal — Sinyal Trading Premium",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
         textAlign = TextAlign.Center

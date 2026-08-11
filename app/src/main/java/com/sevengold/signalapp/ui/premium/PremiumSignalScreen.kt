@@ -200,7 +200,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
 private fun HistorySignalsSection(signals: List<Signal>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "📚 History Sinyal",
+            "📚 Riwayat Sinyal",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -213,7 +213,7 @@ private fun HistorySignalsSection(signals: List<Signal>) {
                 )
             ) {
                 Text(
-                    "Belum ada history sinyal.",
+                    "Belum ada riwayat sinyal.",
                     modifier = Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -230,8 +230,8 @@ private fun HistorySignalsSection(signals: List<Signal>) {
 private fun PendingRenewalBanner() {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Column(Modifier.padding(12.dp)) {
-            Text("⏳ Perpanjangan menunggu approval", fontWeight = FontWeight.Bold)
-            Text("Durasi Premium akan ditambahkan setelah admin menyetujui pembayaran.", style = MaterialTheme.typography.bodySmall)
+            Text("⏳ Perpanjangan Menunggu Persetujuan", fontWeight = FontWeight.Bold)
+            Text("Durasi Premium akan ditambahkan setelah administrator menyetujui pembayaran.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -249,8 +249,8 @@ private fun PremiumExpiryBanner(expiryLabel: String) {
         Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = Color(0xFF241A02))
         Spacer(Modifier.width(10.dp))
         Column {
-            Text("Member Premium Aktif", color = Color(0xFF241A02), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-            Text("Berlaku sampai $expiryLabel", color = Color(0xFF3A2E10), style = MaterialTheme.typography.bodySmall)
+            Text("Keanggotaan Premium Aktif", color = Color(0xFF241A02), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text("Berlaku hingga $expiryLabel", color = Color(0xFF3A2E10), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -331,11 +331,11 @@ private fun PriceStat(label: String, value: Double, color: Color) {
 @Composable
 fun StatusBadge(status: SignalStatus) {
     val (label, color) = when (status) {
-        SignalStatus.ACTIVE -> "ACTIVE" to GoldLight
-        SignalStatus.BE -> "BREAK EVEN" to Color(0xFF8FA6D6)
-        SignalStatus.CANCELLED -> "CANCELLED" to Color(0xFF8B94A8)
-        SignalStatus.TP_HIT -> "TP HIT" to EmeraldAccent
-        SignalStatus.SL_HIT -> "SL HIT" to Color(0xFFE5657A)
+        SignalStatus.ACTIVE -> "AKTIF" to GoldLight
+        SignalStatus.BE -> "IMPAS" to Color(0xFF8FA6D6)
+        SignalStatus.CANCELLED -> "DIBATALKAN" to Color(0xFF8B94A8)
+        SignalStatus.TP_HIT -> "TP TERCAPAI" to EmeraldAccent
+        SignalStatus.SL_HIT -> "SL TERCAPAI" to Color(0xFFE5657A)
     }
     Box(
         Modifier

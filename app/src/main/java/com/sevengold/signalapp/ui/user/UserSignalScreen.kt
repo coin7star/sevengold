@@ -238,7 +238,7 @@ private fun ActiveSignalsSection(
             }
             if (signals.size > 1) {
                 Text(
-                    "Geser ke samping untuk melihat sinyal aktif lainnya →",
+                    "Geser untuk melihat sinyal aktif lainnya →",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -254,7 +254,7 @@ private fun HistorySignalsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "📚 History Sinyal",
+            "📚 Riwayat Sinyal",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -267,7 +267,7 @@ private fun HistorySignalsSection(
                 )
             ) {
                 Text(
-                    "Belum ada history sinyal.",
+                    "Belum ada riwayat sinyal.",
                     modifier = Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -284,8 +284,8 @@ private fun HistorySignalsSection(
 private fun PendingOrderBanner() {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Column(Modifier.padding(14.dp)) {
-            Text("⏳ Pesanan Premium menunggu approval", fontWeight = FontWeight.Bold)
-            Text("Setelah pembayaran dikonfirmasi admin, akun akan otomatis menjadi PREMIUM.", style = MaterialTheme.typography.bodySmall)
+            Text("⏳ Pesanan Premium Menunggu Persetujuan", fontWeight = FontWeight.Bold)
+            Text("Setelah pembayaran dikonfirmasi administrator, akun akan otomatis diaktifkan sebagai Premium.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -304,7 +304,7 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
             Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = Color(0xFF241A02))
             Spacer(Modifier.width(8.dp))
             Text(
-                "Kamu belum berlangganan Premium",
+                "Anda Belum Berlangganan Premium",
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF241A02),
                 style = MaterialTheme.typography.titleMedium
@@ -312,7 +312,7 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "Pilih paket Premium di atas untuk mulai berlangganan. Kode lama dari admin tetap bisa dipakai sebagai opsi cadangan.",
+            "Pilih paket Premium untuk mulai berlangganan. Kode langganan dari administrator tetap dapat digunakan sebagai alternatif.",
             color = Color(0xFF3A2E10),
             style = MaterialTheme.typography.bodySmall
         )
@@ -362,7 +362,7 @@ private fun LockedSignalCard(signal: Signal) {
             ) {
                 Icon(Icons.Filled.Lock, contentDescription = null, tint = Color(0xFF241A02), modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Khusus Premium", style = MaterialTheme.typography.labelMedium, color = Color(0xFF241A02), fontWeight = FontWeight.Bold)
+                Text("Khusus Member Premium", style = MaterialTheme.typography.labelMedium, color = Color(0xFF241A02), fontWeight = FontWeight.Bold)
             }
         }
     }

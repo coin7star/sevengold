@@ -34,13 +34,13 @@ fun SubscriptionBanner(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                if (premium) "💎 Perpanjang Premium" else "👑 Upgrade ke Premium",
+                if (premium) "💎 Perpanjang Premium" else "👑 Beralih ke Premium",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (premium) "Pilih paket untuk menambah durasi. Sisa Premium tidak akan hilang."
-                else "Pilih paket Premium. Setelah pembayaran manual dikonfirmasi admin, akun otomatis menjadi PREMIUM.",
+                if (premium) "Pilih paket untuk menambah masa berlaku. Sisa masa Premium tidak akan hilang."
+                else "Pilih paket Premium. Setelah pembayaran dikonfirmasi administrator, akun otomatis diaktifkan sebagai Premium.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -158,7 +158,7 @@ fun SubscriptionPurchaseSheet(
                 Text("Paket Premium", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Pilih paket. Saat checkout selalu tersedia kolom voucher. Kalau kamu punya voucher welcome, kodenya akan langsung muncul dan bisa dipakai.",
+                    "Pilih paket. Setiap pembelian menyediakan kolom voucher. Jika Anda memiliki voucher selamat datang, kodenya akan ditampilkan otomatis dan dapat digunakan.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -170,9 +170,9 @@ fun SubscriptionPurchaseSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("🎁 Kamu punya Voucher Welcome!", fontWeight = FontWeight.Bold)
+                            Text("🎁 Kamu punya Voucher Selamat Datang!", fontWeight = FontWeight.Bold)
                             Text(
-                                "Voucher ${user.welcomeVoucherCode} tersedia. Diskon ${user.welcomeVoucherPercent}% bisa langsung dipakai saat checkout.",
+                                "Voucher ${user.welcomeVoucherCode} tersedia. Diskon ${user.welcomeVoucherPercent}% dapat langsung digunakan saat pembayaran.",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -184,9 +184,9 @@ fun SubscriptionPurchaseSheet(
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                         Column(Modifier.padding(12.dp)) {
-                            Text("⏳ Pesanan sedang menunggu approval", fontWeight = FontWeight.Bold)
+                            Text("⏳ Pesanan Menunggu Persetujuan", fontWeight = FontWeight.Bold)
                             Text(
-                                "Admin akan memproses pesananmu setelah pembayaran dikonfirmasi.",
+                                "Administrator akan memproses pesanan Anda setelah pembayaran dikonfirmasi.",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -232,7 +232,7 @@ fun SubscriptionPurchaseSheet(
             }
             item {
                 Text(
-                    "Voucher tidak wajib. Setiap pembelian punya kolom voucher di checkout. Voucher welcome yang masih aktif akan ditampilkan otomatis.",
+                    "Voucher bersifat opsional. Setiap pembelian menyediakan kolom voucher saat pembayaran. Voucher selamat datang yang masih aktif akan ditampilkan otomatis.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -301,7 +301,7 @@ fun SubscriptionPurchaseSheet(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "Setelah klik konfirmasi, pesanan masuk ke admin untuk approval manual.",
+                            "Setelah dikonfirmasi, pesanan akan diteruskan kepada administrator untuk diperiksa dan disetujui.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -34,7 +34,7 @@ class UserManagementViewModel(
     fun setPremium(uid: String, durationDays: Int) {
         viewModelScope.launch {
             val result = repo.adminSetRole(uid, Role.PREMIUM, durationDays)
-            _actionMessage.value = if (result.isSuccess) "Berhasil dijadikan PREMIUM" else "Gagal: ${result.exceptionOrNull()?.message}"
+            _actionMessage.value = if (result.isSuccess) "Peran pengguna berhasil diubah menjadi Premium" else "Gagal: ${result.exceptionOrNull()?.message}"
         }
     }
 
@@ -42,7 +42,7 @@ class UserManagementViewModel(
     fun setUser(uid: String) {
         viewModelScope.launch {
             val result = repo.adminSetRole(uid, Role.USER)
-            _actionMessage.value = if (result.isSuccess) "Berhasil dijadikan USER" else "Gagal: ${result.exceptionOrNull()?.message}"
+            _actionMessage.value = if (result.isSuccess) "Peran pengguna berhasil diubah menjadi Pengguna" else "Gagal: ${result.exceptionOrNull()?.message}"
         }
     }
 

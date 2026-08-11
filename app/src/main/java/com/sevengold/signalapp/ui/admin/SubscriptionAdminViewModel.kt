@@ -20,6 +20,11 @@ class SubscriptionAdminViewModel(private val repo: SubscriptionRepository = Subs
     fun reject(orderId: String) { set(orderId, SubscriptionOrderStatus.REJECTED) }
     private fun set(id: String, status: SubscriptionOrderStatus) = viewModelScope.launch {
         val r = repo.setOrderStatus(id, status)
-        _message.value = r.fold({ "Pesanan ${status.name.lowercase()}" }, { "Gagal: ${it.message ?: "unknown error"}" })
+        _message.value = r.fold({ "Pesanan ${statusLabel(status)}" }, { "Gagal: ${it.message ?: "Terjadi kesalahan yang tidak diketahui"}" })
+    }
+    private fun statusLabel(status: SubscriptionOrderStatus): String = when (status) {
+        SubscriptionOrderStatus.PENDING -> "menunggu persetujuan"
+        SubscriptionOrderStatus.APPROVED -> "disetujui"
+        SubscriptionOrderStatus.REJECTED -> "ditolak"
     }
 }

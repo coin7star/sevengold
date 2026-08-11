@@ -48,12 +48,12 @@ fun RegisterScreen(
                 showWelcomeVoucher = false
                 onRegisterSuccess()
             },
-            title = { Text("🎁 Voucher Welcome Kamu") },
+            title = { Text("🎁 Voucher Selamat Datang Anda") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Akun berhasil dibuat!")
                     Text(
-                        "Kamu mendapat voucher welcome ${state.welcomeVoucherPercent}% karena mendaftar lewat referral teman.",
+                        "Anda mendapatkan voucher selamat datang ${state.welcomeVoucherPercent}% karena mendaftar melalui referal teman.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Surface(
@@ -69,7 +69,7 @@ fun RegisterScreen(
                         )
                     }
                     Text(
-                        "Voucher akan digunakan nanti saat kamu klik Beli Paket Premium.",
+                        "Voucher dapat digunakan saat Anda membeli paket Premium.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -144,12 +144,12 @@ fun RegisterScreen(
                 PremiumTextField(
                     value = referralCode,
                     onValueChange = { referralCode = it.uppercase() },
-                    label = "Kode Referral (opsional)",
+                    label = "Kode Referal (opsional)",
                     leadingIcon = Icons.Filled.Person
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Pakai kode teman untuk mendapatkan voucher welcome berlangganan.",
+                    "Gunakan kode referal teman untuk mendapatkan voucher selamat datang saat berlangganan.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
