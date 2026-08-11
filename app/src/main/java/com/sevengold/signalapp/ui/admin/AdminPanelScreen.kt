@@ -59,9 +59,12 @@ fun AdminPanelScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
+            // Custom full-screen admin drawer.
+            // ModalDrawerSheet applies a platform/default maximum width, which made
+            // the admin menu appear clipped on some phone layouts.
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Column(Modifier.fillMaxHeight()) {
                     Row(

@@ -955,3 +955,10 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Pending subscription count remains visible in the Orders drawer item.
 - Admin header now uses a compact menu button and current-page title.
 - Existing admin features and data structures are preserved.
+
+
+## V24.9 — Admin Drawer Fix
+
+- Admin side menu now uses a custom full-screen Surface instead of the Material3 ModalDrawerSheet width constraint.
+- Prevents the admin drawer from appearing clipped/narrow on phone layouts.
+- Existing admin navigation, pending-order badge, profile, logout, and application logic are preserved.
