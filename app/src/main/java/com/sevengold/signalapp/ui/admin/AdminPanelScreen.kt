@@ -11,6 +11,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -22,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
@@ -47,50 +53,221 @@ fun AdminPanelScreen(
     var tab by remember { mutableStateOf(AdminTab.PUBLISH) }
     val subscriptionVm: SubscriptionAdminViewModel = viewModel()
     val pendingOrders by subscriptionVm.orders.collectAsState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        TopAppBar(
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = GoldPrimary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Panel Administrator", fontWeight = FontWeight.Bold)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(),
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
+                Column(Modifier.fillMaxHeight()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "SEVENGOLD",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldPrimary
+                            )
+                            Text(
+                                "Panel Administrator",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        IconButton(onClick = {
+                            drawerScope.launch { drawerState.close() }
+                        }) {
+                            Icon(Icons.Filled.Menu, contentDescription = "Tutup menu")
+                        }
+                    }
+
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.PUBLISH,
+                        label = "Terbitkan Sinyal",
+                        icon = Icons.Filled.ShowChart,
+                        onClick = {
+                            tab = AdminTab.PUBLISH
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.SIGNALS,
+                        label = "Kelola Sinyal",
+                        icon = Icons.Filled.ShowChart,
+                        onClick = {
+                            tab = AdminTab.SIGNALS
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.CODES,
+                        label = "Kode / Voucher",
+                        icon = Icons.Filled.AdminPanelSettings,
+                        onClick = {
+                            tab = AdminTab.CODES
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.PACKAGES,
+                        label = "Paket Langganan",
+                        icon = Icons.Filled.WorkspacePremium,
+                        onClick = {
+                            tab = AdminTab.PACKAGES
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.SUBSCRIPTIONS,
+                        label = if (pendingOrders.isNotEmpty()) "Pesanan (${pendingOrders.size})" else "Pesanan",
+                        icon = Icons.Filled.WorkspacePremium,
+                        onClick = {
+                            tab = AdminTab.SUBSCRIPTIONS
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.USERS,
+                        label = "Pengguna",
+                        icon = Icons.Filled.Person,
+                        onClick = {
+                            tab = AdminTab.USERS
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.REFERRAL,
+                        label = "Referral",
+                        icon = Icons.Filled.AdminPanelSettings,
+                        onClick = {
+                            tab = AdminTab.REFERRAL
+                            drawerScope.launch { drawerState.close() }
+                        }
+                    )
+
+                    Spacer(Modifier.weight(1f))
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+
+                    NavigationDrawerItem(
+                        selected = tab == AdminTab.PROFILE,
+                        onClick = {
+                            tab = AdminTab.PROFILE
+                            drawerScope.launch { drawerState.close() }
+                        },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                        label = { Text("Profil Admin") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                user.email,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Administrator",
+                                color = GoldPrimary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        IconButton(onClick = onLogout) {
+                            Icon(Icons.Filled.Logout, contentDescription = "Keluar")
+                        }
+                    }
                 }
-            },
-            actions = {
-                TextButton(onClick = onLogout) { Text("Keluar", color = DangerRed) }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
-        )
-
-        ScrollableTabRow(
-            selectedTabIndex = tab.ordinal,
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = GoldPrimary,
-            edgePadding = 16.dp
-        ) {
-            AdminTab.values().forEach { t ->
-                Tab(
-                    selected = tab == t,
-                    onClick = { tab = t },
-                    text = { Text(if (t == AdminTab.SUBSCRIPTIONS && pendingOrders.isNotEmpty()) "${t.label} (${pendingOrders.size})" else t.label, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal) },
-                    selectedContentColor = GoldPrimary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        },
+        content = {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.AdminPanelSettings,
+                                contentDescription = null,
+                                tint = GoldPrimary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                when (tab) {
+                                    AdminTab.PUBLISH -> "Terbitkan Sinyal"
+                                    AdminTab.SIGNALS -> "Kelola Sinyal"
+                                    AdminTab.CODES -> "Kode / Voucher"
+                                    AdminTab.PACKAGES -> "Paket Langganan"
+                                    AdminTab.SUBSCRIPTIONS -> "Pesanan"
+                                    AdminTab.USERS -> "Pengguna"
+                                    AdminTab.REFERRAL -> "Referral"
+                                    AdminTab.PROFILE -> "Profil Admin"
+                                },
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            drawerScope.launch { drawerState.open() }
+                        }) {
+                            Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onLogout) {
+                            Icon(
+                                Icons.Filled.Logout,
+                                contentDescription = "Keluar",
+                                tint = DangerRed
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
+
+                when (tab) {
+                    AdminTab.PUBLISH -> PublishSignalTab(adminUid)
+                    AdminTab.SIGNALS -> ManageSignalsTab()
+                    AdminTab.CODES -> ManageCodesTab(adminUid)
+                    AdminTab.PACKAGES -> SubscriptionPackagesTab()
+                    AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
+                    AdminTab.USERS -> ManageUsersTab()
+                    AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
+                    AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                }
             }
         }
+    )
+}
 
-        when (tab) {
-            AdminTab.PUBLISH -> PublishSignalTab(adminUid)
-            AdminTab.SIGNALS -> ManageSignalsTab()
-            AdminTab.CODES -> ManageCodesTab(adminUid)
-            AdminTab.PACKAGES -> SubscriptionPackagesTab()
-            AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
-            AdminTab.USERS -> ManageUsersTab()
-            AdminTab.REFERRAL -> ReferralSettingsTab(adminUid)
-            AdminTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
-        }
-    }
+@Composable
+private fun AdminDrawerItem(
+    selected: Boolean,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.AdminPanelSettings,
+    onClick: () -> Unit
+) {
+    NavigationDrawerItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = null) },
+        label = { Text(label) },
+        modifier = Modifier.padding(horizontal = 12.dp)
+    )
 }
 
 @Composable

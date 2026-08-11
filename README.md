@@ -946,3 +946,12 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 ## V24.7 – Full-width mobile drawer
 - Drawer menu on User/Premium screens now expands to the available device width instead of a narrow fixed 280–340dp sheet.
 - Existing V24.6 features and business logic are preserved.
+
+
+## V24.8 - Admin Side Menu
+
+- Admin navigation moved from the crowded horizontal tab row into a side drawer.
+- Admin menu includes Publish Signal, Signals, Codes/Vouchers, Subscription Packages, Orders, Users, Referral, and Admin Profile.
+- Pending subscription count remains visible in the Orders drawer item.
+- Admin header now uses a compact menu button and current-page title.
+- Existing admin features and data structures are preserved.
