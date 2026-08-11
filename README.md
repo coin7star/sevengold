@@ -701,3 +701,130 @@ File utama:
 
 Integrasi utama:
 `app/src/main/java/com/sevengold/signalapp/ui/navigation/AppNav.kt`
+
+---
+
+## V24.1 — Cloudflare Worker deployment & GitHub Actions fix
+
+Update ini memperbaiki bagian deployment push yang sebelumnya bisa terlihat berhasil di Cloudflare tetapi APK belum menerima URL Worker saat build.
+
+### Perbaikan utama
+
+- GitHub Actions sekarang **wajib membaca** repository secret:
+  `SEVENGOLD_PUSH_WEBHOOK_URL`.
+- URL tersebut diteruskan ke Gradle melalui:
+  `-PSEVENGOLD_PUSH_WEBHOOK_URL="..."`.
+- Jika secret belum dibuat, workflow **gagal dengan pesan yang jelas** daripada menghasilkan APK tanpa URL push.
+- Nama Worker pada `push-worker/wrangler.toml` disamakan dengan Worker Cloudflare yang digunakan:
+  `sevengoldapp`.
+- `PremiumPushGateway` memvalidasi bahwa URL Worker menggunakan HTTPS.
+- Credential FCM/service account tetap hanya berada di **Cloudflare Secret** dan tidak pernah dimasukkan ke APK.
+- Firestore tetap menjadi sumber data utama. Jika push gagal, perubahan sinyal/status tetap tersimpan dan Admin Panel menampilkan pesan bahwa notifikasi belum terkirim.
+- Event push yang didukung:
+  `SIGNAL_CREATED`, `SIGNAL_ACTIVE`, `TP_HIT`, `SL_HIT`, `BE`, `CANCELLED`.
+
+### Konfigurasi Cloudflare Worker
+
+Worker production:
+
+```text
+https://sevengoldapp.coin7star.workers.dev
+```
+
+Secret yang harus dibuat di:
+
+**Cloudflare → Workers & Pages → sevengoldapp → Settings → Variables and Secrets**
+
+Gunakan tipe **Secret**, bukan Plaintext/Variable:
+
+```text
+FIREBASE_PROJECT_ID
+ADMIN_UIDS
+FIREBASE_SERVICE_ACCOUNT_JSON
+```
+
+`ADMIN_UIDS` berisi UID Firebase Authentication administrator yang boleh mengirim push. Jika lebih dari satu, pisahkan dengan koma.
+
+`FIREBASE_SERVICE_ACCOUNT_JSON` berisi seluruh JSON service account yang memiliki izin mengirim FCM. **Jangan commit JSON tersebut ke GitHub dan jangan memasukkannya ke APK.**
+
+### GitHub Actions secret
+
+Di:
+
+**GitHub → Repository → Settings → Secrets and variables → Actions**
+
+buat:
+
+```text
+SEVENGOLD_PUSH_WEBHOOK_URL
+```
+
+value:
+
+```text
+https://sevengoldapp.coin7star.workers.dev
+```
+
+Workflow build akan menghentikan proses jika secret tersebut kosong.
+
+### Catatan keamanan penting
+
+Jika private key Firebase service account pernah muncul di build log, chat, screenshot, atau tempat lain yang tidak seharusnya, anggap key tersebut **terekspos**. Hapus/revoke key lama di Google Cloud/Firebase Service Account lalu buat private key baru. Simpan key baru hanya sebagai Cloudflare Secret.
+
+Jangan pernah memasukkan:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- private key
+- Cloudflare API token
+- Firebase Admin credential
+
+ke source Android atau repository GitHub.
+
+### Alur push
+
+```text
+ADMIN
+  │
+  ├── Simpan perubahan ke Firestore
+  │
+  └── POST + Firebase ID token
+          │
+          ▼
+  Cloudflare Worker
+  ├── Verifikasi Firebase ID token
+  ├── Cek UID terhadap ADMIN_UIDS
+  └── OAuth service account
+          │
+          ▼
+      FCM HTTP v1
+          │
+          ▼
+  topic: premium_signals
+          │
+          ▼
+     DEVICE PREMIUM
+```
+
+### Checklist setelah build
+
+1. Pastikan `SEVENGOLD_PUSH_WEBHOOK_URL` ada di GitHub Actions.
+2. Build APK baru dari workflow.
+3. Install APK baru di device Premium.
+4. Login Premium dan izinkan notifikasi Android.
+5. Login Admin di device Admin.
+6. Terbitkan sinyal.
+7. Buka **Cloudflare → sevengoldapp → Logs** dan pastikan invocation tercatat.
+8. Pastikan notifikasi muncul di device Premium.
+9. Uji `TP`, `SL`, `BE`, dan `Cancel`.
+
+Target jalur server adalah hitungan detik, tetapi waktu tampil di device tetap dapat dipengaruhi jaringan, FCM, Doze/battery optimization, dan pengaturan notifikasi Android.
+
+### Cloudflare Observability
+
+Untuk debugging, aktifkan:
+
+- **Logs: ON**
+- **Include Invocation Logs: ON**
+- **Persist Logs to Workers Dashboard: ON**
+
+Jika Cloudflare menampilkan peringatan bahwa konfigurasi Wrangler berbeda dengan Dashboard, pastikan konfigurasi repository tetap konsisten dengan Worker `sevengoldapp` sebelum deployment berikutnya.

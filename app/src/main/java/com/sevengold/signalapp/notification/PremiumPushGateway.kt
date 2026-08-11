@@ -12,10 +12,11 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Mengirim event sinyal dari Admin Panel ke webhook push eksternal.
+ * Mengirim event sinyal dari Admin Panel ke Cloudflare Worker.
  *
- * Credential FCM tidak pernah masuk ke APK. APK hanya membawa URL webhook publik
- * dan Firebase ID token admin. Worker memvalidasi token + UID admin sebelum mengirim FCM.
+ * APK tidak pernah menyimpan credential FCM/service account. APK hanya membawa
+ * URL Worker publik dan Firebase ID token admin yang sedang login.
+ * Worker memverifikasi token + UID admin sebelum meneruskan pesan ke FCM.
  */
 object PremiumPushGateway {
     private const val TAG = "PremiumPush"
@@ -25,15 +26,29 @@ object PremiumPushGateway {
     suspend fun notifySignal(event: String, signal: Signal): Result<Unit> = withContext(Dispatchers.IO) {
         val endpoint = BuildConfig.PUSH_WEBHOOK_URL.trim()
         if (endpoint.isBlank()) {
-            return@withContext Result.failure(IllegalStateException("URL webhook push belum dikonfigurasi"))
+            return@withContext Result.failure(
+                IllegalStateException("URL Cloudflare Push Worker belum dikonfigurasi")
+            )
+        }
+
+        if (!endpoint.startsWith("https://")) {
+            return@withContext Result.failure(
+                IllegalStateException("URL Cloudflare Push Worker harus menggunakan HTTPS")
+            )
         }
 
         val user = FirebaseAuth.getInstance().currentUser
-            ?: return@withContext Result.failure(IllegalStateException("Sesi administrator tidak ditemukan"))
+            ?: return@withContext Result.failure(
+                IllegalStateException("Sesi administrator tidak ditemukan")
+            )
 
         try {
+            // Paksa refresh hanya jika Firebase memang memerlukannya; cached ID token
+            // biasanya sudah cukup dan menjaga latency tetap rendah.
             val token = user.getIdToken(false).await().token
-                ?: return@withContext Result.failure(IllegalStateException("Firebase ID token tidak tersedia"))
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Firebase ID token tidak tersedia")
+                )
 
             val payload = JSONObject().apply {
                 put("event", event)
@@ -57,17 +72,23 @@ object PremiumPushGateway {
                 setRequestProperty("Authorization", "Bearer $token")
             }
 
-            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            connection.outputStream.use {
+                it.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
             val code = connection.responseCode
             val responseText = runCatching {
                 (if (code in 200..299) connection.inputStream else connection.errorStream)
                     ?.bufferedReader()?.use { it.readText() }.orEmpty()
             }.getOrDefault("")
+
             connection.disconnect()
 
             if (code !in 200..299) {
                 Log.e(TAG, "Webhook push gagal HTTP $code: $responseText")
-                return@withContext Result.failure(IllegalStateException("Webhook push gagal (HTTP $code)"))
+                return@withContext Result.failure(
+                    IllegalStateException("Webhook push gagal (HTTP $code)")
+                )
             }
 
             Log.d(TAG, "Webhook push berhasil: event=$event response=$responseText")
