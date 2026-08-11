@@ -44,7 +44,14 @@ import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.ui.auth.GoldButton
 import com.sevengold.signalapp.ui.common.ProfileScreen
-import com.sevengold.signalapp.ui.admin.SubscriptionAdminViewModel
+import com.sevengold.signalapp.ui.common.SignalListViewModel
+import com.sevengold.signalapp.ui.common.rupiah
+import com.sevengold.signalapp.ui.theme.DangerRed
+import com.sevengold.signalapp.ui.theme.GoldPrimary
+
+private enum class AdminTab(val label: String) {
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
+}
 
 @Composable
 fun AdminPanelScreen(

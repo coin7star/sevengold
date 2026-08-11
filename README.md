@@ -989,6 +989,11 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 
 
 
-## V24.13
+## V24.14
 - Fixed AdminPanelScreen Kotlin import corruption introduced during the Admin drawer patch.
 - Preserved the V24.12 Admin drawer behavior and existing features.
+
+## V24.14 — Admin Drawer Compile Fix
+- Restored the AdminTab declaration and required imports removed during the previous drawer patch.
+- Restored theme colors, SignalListViewModel and rupiah references used by AdminPanelScreen.
+- Preserved the V24.13 drawer UI/state behavior.
