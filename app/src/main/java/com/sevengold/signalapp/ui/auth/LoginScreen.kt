@@ -62,10 +62,14 @@ fun LoginScreen(
                 val account = task.getResult(ApiException::class.java)
                 viewModel.onLegacyGoogleSignInResult(account.idToken)
             } catch (e: ApiException) {
-                viewModel.onLegacyGoogleSignInResult(null)
+                viewModel.onLegacyGoogleSignInResult(
+                    null,
+                    "Google Sign-In gagal (statusCode=${e.statusCode}). " +
+                        "Pastikan SHA-1 APK terdaftar di Firebase dan Web Client ID benar."
+                )
             }
         } else {
-            viewModel.onLegacyGoogleSignInResult(null)
+            viewModel.onLegacyGoogleSignInResult(null, "Login dengan Google dibatalkan.")
         }
     }
 

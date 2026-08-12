@@ -1057,3 +1057,12 @@ SHA-256: E1:25:9C:00:3A:F2:D7:D5:0F:2F:2E:3E:2A:ED:27:77:72:96:A0:22:70:24:04:11
 1. Tambah GitHub repository secret `DEBUG_KEYSTORE_BASE64` (isinya base64 dari keystore debug permanen).
 2. Tambahkan SHA-1 & SHA-256 di atas ke Firebase Console untuk app Android `com.sevengold.signalapp`.
 3. Setelah itu, setiap build dari GitHub Actions akan selalu memakai keystore yang sama, jadi SHA-1/SHA-256 tidak perlu diupdate lagi ke Firebase di masa depan.
+
+
+## V24.5 — Google Sign-In fix
+
+- Debug build now uses a stable `debug.keystore`, so the SHA-1 fingerprint does not change between GitHub Actions runs.
+- Workflow validates that `google-services.json` matches package `com.sevengold.signalapp` and contains a Web OAuth client (`client_type=3`).
+- Google Sign-In errors now expose the Google status code instead of always showing a generic cancellation message.
+- In Firebase Console, add the SHA-1 printed by GitHub Actions under Android app settings, then download the updated `google-services.json` and update the `GOOGLE_SERVICES_JSON_BASE64` GitHub secret.
+- This change is for debug APK authentication only; never use the debug keystore as a production release signing key.

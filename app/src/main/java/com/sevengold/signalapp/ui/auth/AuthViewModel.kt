@@ -61,9 +61,9 @@ class AuthViewModel(
     fun buildLegacyGoogleSignInIntent(context: Context) = repo.buildLegacyGoogleSignInIntent(context)
 
     /** Dipanggil UI setelah user selesai memilih akun di layar Google klasik. */
-    fun onLegacyGoogleSignInResult(idToken: String?) {
+    fun onLegacyGoogleSignInResult(idToken: String?, errorMessage: String? = null) {
         if (idToken.isNullOrBlank()) {
-            _state.value = AuthUiState(error = "Login dengan Google dibatalkan atau gagal")
+            _state.value = AuthUiState(error = errorMessage ?: "Login dengan Google dibatalkan atau gagal")
             return
         }
         _state.value = AuthUiState(loading = true)

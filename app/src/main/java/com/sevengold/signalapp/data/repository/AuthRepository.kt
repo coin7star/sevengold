@@ -148,13 +148,20 @@ class AuthRepository(
     }
 
     private fun resolveWebClientId(context: Context): String {
-        val clientId = context.resources.getIdentifier(
+        val resourceId = context.resources.getIdentifier(
             "default_web_client_id",
             "string",
             context.packageName
-        ).takeIf { it != 0 }?.let { context.getString(it).trim() }.orEmpty()
+        )
+        val clientId = resourceId.takeIf { it != 0 }
+            ?.let { context.getString(it).trim() }
+            .orEmpty()
+
         if (clientId.isBlank() || clientId.contains("YOUR_WEB_CLIENT_ID")) {
-            error("Google Login belum dikonfigurasi. Isi Web Client ID di Firebase dan update google-services.json.")
+            error(
+                "Google Login belum dikonfigurasi: Web OAuth Client ID tidak ditemukan. " +
+                    "Pastikan google-services.json terbaru memiliki oauth_client client_type=3."
+            )
         }
         return clientId
     }
