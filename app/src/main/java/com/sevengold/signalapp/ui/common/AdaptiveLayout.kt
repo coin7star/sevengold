@@ -12,10 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Shared responsive frame.
+ * Responsive content frame for phones, foldables and tablets.
  *
- * Uses available width instead of device names, so phones, tablets,
- * foldables and split-screen all get sensible spacing automatically.
+ * Breakpoints use available window width instead of device names, so the UI
+ * also adapts correctly to split-screen and landscape mode.
  */
 @Composable
 fun AdaptiveAppFrame(
@@ -27,17 +27,14 @@ fun AdaptiveAppFrame(
         contentAlignment = Alignment.TopCenter
     ) {
         val horizontalPadding = when {
-            maxWidth >= 1200.dp -> 40.dp
-            maxWidth >= 840.dp -> 28.dp
-            maxWidth >= 600.dp -> 20.dp
-            maxWidth >= 420.dp -> 16.dp
-            else -> 12.dp
+            maxWidth >= 840.dp -> 32.dp
+            maxWidth >= 600.dp -> 24.dp
+            else -> 16.dp
         }
 
         val contentMaxWidth = when {
-            maxWidth >= 1200.dp -> 1120.dp
-            maxWidth >= 840.dp -> 1040.dp
-            maxWidth >= 600.dp -> 920.dp
+            maxWidth >= 840.dp -> 1200.dp
+            maxWidth >= 600.dp -> 960.dp
             else -> maxWidth
         }
 

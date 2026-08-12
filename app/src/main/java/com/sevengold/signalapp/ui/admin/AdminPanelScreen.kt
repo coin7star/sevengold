@@ -56,7 +56,7 @@ import com.sevengold.signalapp.ui.theme.GoldPrimary
 import java.util.Locale
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referral"), PROFILE("Profil")
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
 }
 
 @Composable
@@ -119,8 +119,7 @@ fun AdminPanelScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
 

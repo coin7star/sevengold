@@ -14,8 +14,7 @@ data class AuthUiState(
     val success: Boolean = false,
     val welcomeVoucherCode: String? = null,
     val welcomeVoucherPercent: Int = 0,
-    // true = Credential Manager gagal (biasanya masalah device/ROM), minta UI buka
-    // layar pilih akun Google versi klasik sebagai jalur cadangan.
+    // Meminta UI membuka pemilih akun Google Play Services.
     val launchLegacyGoogleSignIn: Boolean = false
 )
 
@@ -42,19 +41,7 @@ class AuthViewModel(
     }
 
     fun loginWithGoogle(context: Context) {
-        _state.value = AuthUiState(loading = true)
-        viewModelScope.launch {
-            val result = repo.loginWithGoogle(context)
-            _state.value = result.fold(
-                onSuccess = { AuthUiState(success = true) },
-                onFailure = {
-                    // Credential Manager gagal (paling sering: masalah kompatibilitas
-                    // device/ROM, bukan konfigurasi). Minta UI coba jalur klasik dulu
-                    // sebelum menampilkan pesan error ke user.
-                    AuthUiState(loading = false, launchLegacyGoogleSignIn = true)
-                }
-            )
-        }
+        _state.value = AuthUiState(loading = false, launchLegacyGoogleSignIn = true)
     }
 
     /** Dipanggil UI untuk mengambil Intent layar pilih akun Google versi klasik. */

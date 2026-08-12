@@ -51,8 +51,7 @@ fun LoginScreen(
         if (state.success) onLoginSuccess()
     }
 
-    // Launcher untuk layar pilih akun Google versi klasik (fallback saat Credential
-    // Manager gagal, misal di sebagian HP Xiaomi/MIUI).
+    // Satu-satunya launcher Google Login: selalu tampilkan pemilih akun Google.
     val legacyGoogleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
