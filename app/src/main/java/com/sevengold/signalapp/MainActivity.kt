@@ -13,8 +13,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.sevengold.signalapp.notification.NotificationTopics
 import com.sevengold.signalapp.ui.navigation.AppNav
 import com.sevengold.signalapp.ui.theme.SignalAppTheme
@@ -27,6 +29,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.statusBarColor = com.sevengold.signalapp.ui.theme.NavyBackground.toArgb()
+        window.navigationBarColor = com.sevengold.signalapp.ui.theme.NavyBackground.toArgb()
 
         NotificationTopics.createChannelIfNeeded(this)
         askNotificationPermissionIfNeeded()

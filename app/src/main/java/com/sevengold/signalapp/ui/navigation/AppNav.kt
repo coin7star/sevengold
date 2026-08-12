@@ -2,7 +2,6 @@ package com.sevengold.signalapp.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sevengold.signalapp.data.model.Role
 import com.sevengold.signalapp.ui.admin.AdminPanelScreen
 import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
+import com.sevengold.signalapp.ui.common.AppLoading
 import com.sevengold.signalapp.ui.auth.LoginScreen
 import com.sevengold.signalapp.ui.auth.RegisterScreen
 import com.sevengold.signalapp.ui.premium.PremiumSignalScreen
@@ -75,7 +75,7 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
             if (uid == null || currentUser == null) {
                 // Masih loading profil dari Firestore
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    AppLoading(message = "Memuat profil…")
                 }
                 return@composable
             }

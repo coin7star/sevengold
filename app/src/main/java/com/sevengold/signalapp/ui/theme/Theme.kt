@@ -53,7 +53,14 @@ private val LightColors = lightColorScheme(
     background = Color(0xFFFAF8F4),
     surface = Color.White,
     surfaceVariant = Color(0xFFF1ECE0),
-    error = Color(0xFFB3273D)
+    onBackground = Color(0xFF201F1B),
+    onSurface = Color(0xFF201F1B),
+    onSurfaceVariant = Color(0xFF625E54),
+    outline = Color(0xFFD4CDBD),
+    outlineVariant = Color(0xFFE7E0D2),
+    scrim = Color(0x66000000),
+    error = Color(0xFFB3273D),
+    onError = Color.White
 )
 
 val SignalAppShapes = Shapes(
