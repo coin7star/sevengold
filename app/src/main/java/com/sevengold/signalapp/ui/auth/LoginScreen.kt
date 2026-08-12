@@ -5,6 +5,7 @@ package com.sevengold.signalapp.ui.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import com.sevengold.signalapp.ui.theme.SignalGradients
 
 @Composable
@@ -104,6 +106,12 @@ fun LoginScreen(
                     text = "Masuk",
                     loading = state.loading,
                     onClick = { viewModel.login(email, password) }
+                )
+
+                Spacer(Modifier.height(12.dp))
+                GoogleButton(
+                    loading = state.loading,
+                    onClick = { viewModel.loginWithGoogle(LocalContext.current) }
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -189,6 +197,44 @@ internal fun PremiumTextField(
         ),
         modifier = Modifier.fillMaxWidth()
     )
+}
+
+@Composable
+private fun GoogleButton(
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = !loading,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color(0x12FFFFFF),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            Text(
+                text = "G",
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "Masuk dengan Google",
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
 }
 
 /** Tombol utama emas bergradasi, dipakai untuk aksi primer (Masuk / Daftar / Aktifkan). */

@@ -1,10 +1,21 @@
 package com.sevengold.signalapp.data.repository
 
+import android.content.Context
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Role
 import kotlinx.coroutines.tasks.await
+
+private const val GOOGLE_ID_TOKEN_CREDENTIAL_TYPE = "com.google.android.libraries.identity.googleid.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL"
 
 data class RegistrationResult(
     val uid: String,
@@ -23,7 +34,6 @@ class AuthRepository(
 
         val result = auth.createUserWithEmailAndPassword(email, password).await()
         val uid = result.user?.uid ?: error("Gagal membuat akun")
-        // Nilai voucher dipakai setelah blok try untuk dikembalikan ke UI.
         var welcomePercent = 0
         var welcomeVoucherCode = ""
 
@@ -37,7 +47,6 @@ class AuthRepository(
                     ?: error("Kode referral tidak ditemukan")
             } else null
 
-            // Kode referral stabil berdasarkan UID, jadi tidak perlu generate random.
             val myReferralCode = "SG${uid.take(8).uppercase()}"
             val referralSettingsSnap = db.collection("appSettings").document("referral").get().await()
             val referralSettings = com.sevengold.signalapp.data.model.ReferralSettings.fromMap(referralSettingsSnap.data)
@@ -63,7 +72,6 @@ class AuthRepository(
             )
             batch.commit().await()
         } catch (e: Exception) {
-            // Jangan tinggalkan akun Auth setengah jadi kalau profil/referral gagal dibuat.
             runCatching { result.user?.delete()?.await() }
             throw e
         }
@@ -76,6 +84,99 @@ class AuthRepository(
         val uid = result.user?.uid ?: error("Gagal login")
         ensureReferralData(uid, result.user?.email ?: email)
         uid
+    }
+
+    /**
+     * Login/daftar menggunakan akun Google melalui Credential Manager.
+     * Akun Google baru otomatis dibuatkan profil USER + referral code.
+     */
+    suspend fun loginWithGoogle(context: Context): Result<String> = runCatching {
+        val credentialManager = CredentialManager.create(context)
+        val clientId = context.getString(com.sevengold.signalapp.R.string.default_web_client_id)
+            .trim()
+        if (clientId.isBlank() || clientId.contains("YOUR_WEB_CLIENT_ID")) {
+            error("Google Login belum dikonfigurasi. Isi Web Client ID di Firebase dan update google-services.json.")
+        }
+
+        val googleCredential = getGoogleCredential(
+            credentialManager = credentialManager,
+            context = context,
+            serverClientId = clientId,
+            filterAuthorizedAccounts = true
+        ) ?: getGoogleCredential(
+            credentialManager = credentialManager,
+            context = context,
+            serverClientId = clientId,
+            filterAuthorizedAccounts = false
+        ) ?: error("Tidak ada akun Google yang dapat digunakan")
+
+        val googleIdTokenCredential = try {
+            GoogleIdTokenCredential.createFrom(googleCredential.data)
+        } catch (e: GoogleIdTokenParsingException) {
+            throw IllegalStateException("Token Google tidak valid", e)
+        }
+
+        val firebaseCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+        val authResult = try {
+            auth.signInWithCredential(firebaseCredential).await()
+        } catch (e: FirebaseAuthUserCollisionException) {
+            error("Email ini sudah terdaftar dengan metode login lain. Gunakan login email/password terlebih dahulu.")
+        }
+
+        val firebaseUser = authResult.user ?: error("Gagal login dengan Google")
+        ensureUserProfile(firebaseUser.uid, firebaseUser.email.orEmpty(), firebaseUser.displayName.orEmpty())
+        firebaseUser.uid
+    }
+
+    private suspend fun getGoogleCredential(
+        credentialManager: CredentialManager,
+        context: Context,
+        serverClientId: String,
+        filterAuthorizedAccounts: Boolean
+    ): CustomCredential? {
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setServerClientId(serverClientId)
+            .setFilterByAuthorizedAccounts(filterAuthorizedAccounts)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        return try {
+            val result = credentialManager.getCredential(context, request)
+            result.credential as? CustomCredential
+                ?.takeIf { it.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun ensureUserProfile(uid: String, email: String, displayName: String) {
+        val ref = db.collection("users").document(uid)
+        val snap = ref.get().await()
+
+        if (!snap.exists()) {
+            val referralCode = "SG${uid.take(8).uppercase()}"
+            val createdAt = System.currentTimeMillis()
+            val newUser = AppUser(
+                uid = uid,
+                email = email,
+                role = Role.USER,
+                createdAt = createdAt,
+                referralCode = referralCode
+            )
+            val batch = db.batch()
+            batch.set(ref, newUser.toMap())
+            batch.set(
+                db.collection("referralCodes").document(referralCode),
+                mapOf("uid" to uid, "createdAt" to createdAt)
+            )
+            batch.commit().await()
+            return
+        }
+
+        ensureReferralData(uid, email)
     }
 
     private suspend fun ensureReferralData(uid: String, email: String) {
@@ -107,9 +208,6 @@ class AuthRepository(
         }
         ref.update(updates).await()
 
-        // Jangan menimpa dokumen referral code yang sudah ada.
-        // Firestore rules hanya mengizinkan user membuat kode miliknya sendiri,
-        // sehingga login ulang tidak boleh berubah menjadi operasi UPDATE.
         val referralRef = db.collection("referralCodes").document(referralCode)
         val referralSnap = referralRef.get().await()
         if (!referralSnap.exists()) {

@@ -62,6 +62,11 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
 
+    // Google Sign-In via Android Credential Manager
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
     // Coroutines <-> Firebase Task bridge
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 

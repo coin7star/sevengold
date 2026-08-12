@@ -1,5 +1,6 @@
 package com.sevengold.signalapp.ui.auth
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sevengold.signalapp.data.repository.AuthRepository
@@ -33,6 +34,17 @@ class AuthViewModel(
             _state.value = result.fold(
                 onSuccess = { AuthUiState(success = true) },
                 onFailure = { AuthUiState(error = it.message ?: "Gagal masuk") }
+            )
+        }
+    }
+
+    fun loginWithGoogle(context: Context) {
+        _state.value = AuthUiState(loading = true)
+        viewModelScope.launch {
+            val result = repo.loginWithGoogle(context)
+            _state.value = result.fold(
+                onSuccess = { AuthUiState(success = true) },
+                onFailure = { AuthUiState(error = it.message ?: "Gagal masuk dengan Google") }
             )
         }
     }
