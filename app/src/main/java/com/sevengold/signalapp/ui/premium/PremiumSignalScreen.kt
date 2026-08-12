@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,7 +82,7 @@ fun PremiumSignalScreen(
                     },
                     title = {
                         Text(
-                            if (tab == PremiumTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
+                            if (tab == PremiumTab.SIGNALS) "XAUUSD" else "Profil",
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -127,17 +128,20 @@ fun PremiumSignalScreen(
                                 signals.filter { it.status != SignalStatus.ACTIVE }
                             }
 
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
-                            ) {
+                            BoxWithConstraints(Modifier.fillMaxSize()) {
+                                val sidePadding = if (maxWidth < 360.dp) 12.dp else 16.dp
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = sidePadding),
+                                    verticalArrangement = Arrangement.spacedBy(if (maxWidth < 360.dp) 10.dp else 12.dp),
+                                    contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                                ) {
                                 item { ActiveSignalsSection(signals = activeSignals) }
                                 item { PremiumExpiryBanner(expiryLabel) }
                                 item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
                                 if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
                                 item { PerformanceSummaryCard(signals = signals) }
-                                item { HistorySignalsSection(signals = historySignals) }
+                                    item { HistorySignalsSection(signals = historySignals) }
+                                }
                             }
                         }
                         PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
@@ -170,9 +174,9 @@ fun PremiumSignalScreen(
                         Modifier.fillMaxWidth().padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f).padding(end = 8.dp)) {
                             Text("SEVENGOLD", fontWeight = FontWeight.ExtraBold, color = GoldPrimary)
-                            Text("Menu aplikasi", style = MaterialTheme.typography.labelMedium)
+                            Text("Menu", style = MaterialTheme.typography.labelMedium)
                         }
                         IconButton(onClick = { drawerOpen = false }) {
                             Icon(Icons.Filled.Close, contentDescription = "Tutup menu")
@@ -238,7 +242,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Sinyal Aktif",
+                "Sinyal aktif",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -261,7 +265,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
                 )
             ) {
                 Text(
-                    "Belum ada sinyal aktif.",
+                    "Belum ada sinyal.",
                     modifier = Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -282,7 +286,7 @@ private fun ActiveSignalsSection(signals: List<Signal>) {
             }
             if (signals.size > 1) {
                 Text(
-                    "Geser ke samping untuk melihat sinyal aktif lainnya →",
+                    "Geser untuk sinyal lain →",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -300,8 +304,8 @@ private fun HistorySignalsSection(signals: List<Signal>) {
 private fun PendingRenewalBanner() {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Column(Modifier.padding(12.dp)) {
-            Text("⏳ Perpanjangan Menunggu Persetujuan", fontWeight = FontWeight.Bold)
-            Text("Durasi Premium akan ditambahkan setelah administrator menyetujui pembayaran.", style = MaterialTheme.typography.bodySmall)
+            Text("⏳ Perpanjangan diproses", fontWeight = FontWeight.Bold)
+            Text("Masa Premium bertambah setelah pembayaran disetujui.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -319,8 +323,8 @@ private fun PremiumExpiryBanner(expiryLabel: String) {
         Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = Color(0xFF241A02))
         Spacer(Modifier.width(10.dp))
         Column {
-            Text("Keanggotaan Premium Aktif", color = Color(0xFF241A02), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-            Text("Berlaku hingga $expiryLabel", color = Color(0xFF3A2E10), style = MaterialTheme.typography.bodySmall)
+            Text("Premium aktif", color = Color(0xFF241A02), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text("Aktif sampai $expiryLabel", color = Color(0xFF3A2E10), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -344,9 +348,14 @@ fun SignalCard(signal: Signal) {
                 .background(if (isBuy) EmeraldAccent else Color(0xFFE5657A))
         )
         Column(Modifier.padding(16.dp).weight(1f)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val compact = maxWidth < 330.dp
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
                         Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isBuy) Color(0x263FBF8F) else Color(0x26E5657A))
@@ -359,23 +368,32 @@ fun SignalCard(signal: Signal) {
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Text(signal.pair, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            signal.pair,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    StatusBadge(status = signal.status, compact = compact)
                 }
-                StatusBadge(signal.status)
-            }
-            Spacer(Modifier.height(12.dp))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                PriceStat("Entry", signal.entry, MaterialTheme.colorScheme.onSurface)
-                PriceStat("TP", signal.tp, EmeraldAccent)
-                PriceStat("SL", signal.sl, Color(0xFFE5657A))
+                Spacer(Modifier.height(if (compact) 10.dp else 12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    PriceStat("Entry", signal.entry, MaterialTheme.colorScheme.onSurface)
+                    PriceStat("TP", signal.tp, EmeraldAccent)
+                    PriceStat("SL", signal.sl, Color(0xFFE5657A))
+                }
             }
 
             if (signal.note.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))
                 Text(
                     signal.note,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -394,12 +412,12 @@ fun SignalCard(signal: Signal) {
 private fun PriceStat(label: String, value: Double, color: Color) {
     Column {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("$value", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(String.format(Locale.US, "%.2f", value), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
     }
 }
 
 @Composable
-fun StatusBadge(status: SignalStatus) {
+fun StatusBadge(status: SignalStatus, compact: Boolean = false) {
     val (label, color) = when (status) {
         SignalStatus.ACTIVE -> "AKTIF" to GoldLight
         SignalStatus.BE -> "IMPAS" to Color(0xFF8FA6D6)
@@ -411,8 +429,8 @@ fun StatusBadge(status: SignalStatus) {
         Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(color.copy(alpha = 0.16f))
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .padding(horizontal = if (compact) 7.dp else 10.dp, vertical = 5.dp)
     ) {
-        Text(label, color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        Text(label, color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
