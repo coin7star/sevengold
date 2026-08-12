@@ -38,6 +38,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Signal
@@ -51,6 +53,7 @@ import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.rupiah
 import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
+import java.util.Locale
 
 private enum class AdminTab(val label: String) {
     PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
@@ -310,12 +313,21 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
     var entry by remember { mutableStateOf("") }
     var tp by remember { mutableStateOf("") }
     var sl by remember { mutableStateOf("") }
+    var quickSlMode by remember { mutableStateOf(false) }
+    var slPips by remember { mutableStateOf("") }
     var rrTarget by remember { mutableStateOf("2") } // target RR default 1:2
     var note by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
 
+    // Mode cepat: XAUUSD memakai 1$ = 10 pips, jadi 50 pips = jarak harga $5.
+    val effectiveSl = if (quickSlMode) {
+        calculateSlFromPips(type, entry.toDoubleOrNull(), slPips.toDoubleOrNull())
+    } else {
+        sl.toDoubleOrNull()
+    }
+
     // RR aktual dihitung live dari Entry/TP/SL yang lagi diisi (buat sanity-check sebelum publish)
-    val liveRR = remember(entry, tp, sl) { calculateRR(entry.toDoubleOrNull(), tp.toDoubleOrNull(), sl.toDoubleOrNull()) }
+    val liveRR = remember(entry, tp, effectiveSl) { calculateRR(entry.toDoubleOrNull(), tp.toDoubleOrNull(), effectiveSl) }
 
     Column(
         Modifier
@@ -333,9 +345,61 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
         }
         Spacer(Modifier.height(12.dp))
 
-        OutlinedTextField(value = entry, onValueChange = { entry = it }, label = { Text("Entry") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = entry,
+            onValueChange = { entry = normalizeDecimalInput(it) },
+            label = { Text("Entry") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(value = sl, onValueChange = { sl = it }, label = { Text("Stop Loss (SL)") }, modifier = Modifier.fillMaxWidth())
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Mode Cepat SL", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "1$ = 10 pips • isi pips, harga SL otomatis",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = quickSlMode, onCheckedChange = { quickSlMode = it })
+        }
+        Spacer(Modifier.height(6.dp))
+
+        if (quickSlMode) {
+            OutlinedTextField(
+                value = slPips,
+                onValueChange = { slPips = normalizeDecimalInput(it) },
+                label = { Text("Stop Loss (Pips)") },
+                suffix = { Text("pips") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+            if (effectiveSl != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Harga SL otomatis: ${formatPriceWithDot(effectiveSl)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else {
+            OutlinedTextField(
+                value = sl,
+                onValueChange = { sl = normalizeDecimalInput(it) },
+                label = { Text("Stop Loss (SL)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+        }
         Spacer(Modifier.height(8.dp))
 
         // --- Kalkulator RR: isi Entry + SL + target RR, TP otomatis kehitung ---
@@ -348,18 +412,18 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
                     Spacer(Modifier.width(8.dp))
                     OutlinedTextField(
                         value = rrTarget,
-                        onValueChange = { rrTarget = it },
+                        onValueChange = { rrTarget = normalizeDecimalInput(it) },
                         modifier = Modifier.width(90.dp),
                         singleLine = true
                     )
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = {
                         val entryD = entry.toDoubleOrNull()
-                        val slD = sl.toDoubleOrNull()
+                        val slD = effectiveSl
                         val rrD = rrTarget.toDoubleOrNull()
                         val computedTp = calculateTpFromRR(type, entryD, slD, rrD)
                         if (computedTp != null) {
-                            tp = "%.2f".format(computedTp)
+                            tp = formatPriceWithDot(computedTp)
                         }
                     }) {
                         Text("Isi TP")
@@ -375,10 +439,17 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
         }
         Spacer(Modifier.height(8.dp))
 
-        OutlinedTextField(value = tp, onValueChange = { tp = it }, label = { Text("Take Profit (TP)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = tp,
+            onValueChange = { tp = normalizeDecimalInput(it) },
+            label = { Text("Take Profit (TP)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = if (liveRR != null) "RR saat ini: 1 : ${"%.2f".format(liveRR)}" else "RR saat ini: —",
+            text = if (liveRR != null) "RR saat ini: 1 : ${formatPriceWithDot(liveRR)}" else "RR saat ini: —",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -400,14 +471,14 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
                     type = type,
                     entry = entry.toDoubleOrNull() ?: 0.0,
                     tp = tp.toDoubleOrNull() ?: 0.0,
-                    sl = sl.toDoubleOrNull() ?: 0.0,
+                    sl = effectiveSl ?: 0.0,
                     status = SignalStatus.ACTIVE,
                     note = note,
                     createdBy = adminUid
                 )
                 vm.publish(signal) { ok, err ->
                     message = if (ok) {
-                        entry = ""; tp = ""; sl = ""; note = ""
+                        entry = ""; tp = ""; sl = ""; slPips = ""; note = ""
                         "Sinyal berhasil dipublish"
                     } else {
                         "Gagal: $err"
@@ -416,6 +487,22 @@ private fun PublishSignalTab(adminUid: String, vm: SignalListViewModel = viewMod
             }
         )
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Normalisasi input angka agar selalu memakai titik sebagai desimal, termasuk pada keyboard locale Indonesia. */
+private fun normalizeDecimalInput(value: String): String = value.replace(',', '.')
+
+/** Format harga selalu dengan titik, bukan koma. Contoh 4010.00. */
+private fun formatPriceWithDot(value: Double): String = String.format(Locale.US, "%.2f", value)
+
+/** Mode cepat XAUUSD: 1$ = 10 pips, sehingga 1 pip = $0.10. */
+private fun calculateSlFromPips(type: SignalType, entry: Double?, pips: Double?): Double? {
+    if (entry == null || pips == null || pips <= 0.0) return null
+    val priceDistance = pips / 10.0
+    return when (type) {
+        SignalType.BUY -> entry - priceDistance
+        SignalType.SELL -> entry + priceDistance
     }
 }
 
