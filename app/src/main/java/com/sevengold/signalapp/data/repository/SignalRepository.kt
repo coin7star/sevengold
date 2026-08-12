@@ -46,6 +46,22 @@ class SignalRepository(
         Unit
     }
 
+    /** Hapus beberapa sinyal terpilih secara permanen dalam batch. */
+    suspend fun deleteSignals(signalIds: List<String>): Result<Int> = runCatching {
+        if (signalIds.isEmpty()) return@runCatching 0
+
+        var deleted = 0
+        signalIds.distinct().chunked(500).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { id ->
+                batch.delete(collection.document(id))
+            }
+            batch.commit().await()
+            deleted += chunk.size
+        }
+        deleted
+    }
+
     /** Hapus semua sinyal yang berstatus CANCELLED dalam batch. */
     suspend fun deleteCancelledSignals(): Result<Int> = runCatching {
         val snapshot = collection

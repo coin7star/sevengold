@@ -536,6 +536,8 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
     var showAll by remember { mutableStateOf(false) }
     var signalToDelete by remember { mutableStateOf<Signal?>(null) }
     var showClearCancelledDialog by remember { mutableStateOf(false) }
+    var showDeleteSelectedDialog by remember { mutableStateOf(false) }
+    var selectedSignalIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
 
     val cancelledCount = remember(signals) { signals.count { it.status == SignalStatus.CANCELLED } }
@@ -558,6 +560,12 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
     }
 
     val visibleSignals = if (showAll) filteredSignals else filteredSignals.take(8)
+    val deletableVisibleSignals = visibleSignals.filter {
+        it.status == SignalStatus.TP_HIT ||
+            it.status == SignalStatus.SL_HIT ||
+            it.status == SignalStatus.BE
+    }
+    val selectedVisibleSignals = deletableVisibleSignals.filter { it.id in selectedSignalIds }
 
     Column(
         Modifier
@@ -578,6 +586,30 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (selectedVisibleSignals.isNotEmpty()) {
+                    TextButton(
+                        onClick = { showDeleteSelectedDialog = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Hapus ${selectedVisibleSignals.size}")
+                    }
+                }
+                if (deletableVisibleSignals.isNotEmpty()) {
+                    TextButton(
+                        onClick = {
+                            val allSelected = deletableVisibleSignals.all { it.id in selectedSignalIds }
+                            selectedSignalIds = if (allSelected) {
+                                selectedSignalIds - deletableVisibleSignals.map { it.id }.toSet()
+                            } else {
+                                selectedSignalIds + deletableVisibleSignals.map { it.id }
+                            }
+                        }
+                    ) {
+                        Text(if (deletableVisibleSignals.all { it.id in selectedSignalIds }) "Batal ceklis" else "Ceklis semua")
+                    }
+                }
                 if (cancelledCount > 0) {
                     TextButton(
                         onClick = { showClearCancelledDialog = true },
@@ -737,6 +769,9 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
             }
 
             items(visibleSignals, key = { it.id }) { signal ->
+                val canDeleteBySelection = signal.status == SignalStatus.TP_HIT ||
+                    signal.status == SignalStatus.SL_HIT ||
+                    signal.status == SignalStatus.BE
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
                         Row(
@@ -744,11 +779,24 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "${signal.type} ${signal.pair}",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (canDeleteBySelection) {
+                                    Checkbox(
+                                        checked = signal.id in selectedSignalIds,
+                                        onCheckedChange = { checked ->
+                                            selectedSignalIds = if (checked) selectedSignalIds + signal.id else selectedSignalIds - signal.id
+                                        }
+                                    )
+                                }
+                                Text(
+                                    "${signal.type} ${signal.pair}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             AssistChip(
                                 onClick = {},
                                 label = { Text(adminSignalStatusLabel(signal.status)) }
@@ -801,6 +849,34 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                         if (target != null) {
                             vm.deleteSignal(target) { success, error ->
                                 actionMessage = if (success) "Sinyal ${target.type} ${target.pair} berhasil dihapus dari Firebase." else "Gagal menghapus sinyal: ${error ?: "tidak diketahui"}"
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Hapus permanen") }
+            }
+        )
+    }
+
+    if (showDeleteSelectedDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSelectedDialog = false },
+            title = { Text("Hapus sinyal terpilih?") },
+            text = { Text("Sebanyak ${selectedVisibleSignals.size} sinyal TP/SL/BE yang diceklis akan dihapus permanen dari Firebase. Sinyal Batal tetap aman dan tidak ikut terhapus.") },
+            dismissButton = { TextButton(onClick = { showDeleteSelectedDialog = false }) { Text("Batal") } },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val targets = selectedVisibleSignals.toList()
+                        showDeleteSelectedDialog = false
+                        if (targets.isNotEmpty()) {
+                            vm.deleteSignals(targets) { success, deleted, error ->
+                                if (success) {
+                                    selectedSignalIds = selectedSignalIds - targets.map { it.id }.toSet()
+                                    actionMessage = "Berhasil menghapus $deleted sinyal TP/SL/BE dari Firebase."
+                                } else {
+                                    actionMessage = "Gagal menghapus sinyal terpilih: ${error ?: "tidak diketahui"}"
+                                }
                             }
                         }
                     },

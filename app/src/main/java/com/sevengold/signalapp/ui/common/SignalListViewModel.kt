@@ -57,6 +57,17 @@ class SignalListViewModel(
         }
     }
 
+    fun deleteSignals(signals: List<Signal>, onDone: (Boolean, Int, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repo.deleteSignals(signals.map { it.id })
+            if (result.isSuccess) {
+                onDone(true, result.getOrDefault(0), null)
+            } else {
+                onDone(false, 0, result.exceptionOrNull()?.message)
+            }
+        }
+    }
+
     fun deleteCancelledSignals(onDone: (Boolean, Int, String?) -> Unit) {
         viewModelScope.launch {
             val result = repo.deleteCancelledSignals()
