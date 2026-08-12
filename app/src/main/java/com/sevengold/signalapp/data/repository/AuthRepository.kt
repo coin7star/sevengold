@@ -92,8 +92,11 @@ class AuthRepository(
      */
     suspend fun loginWithGoogle(context: Context): Result<String> = runCatching {
         val credentialManager = CredentialManager.create(context)
-        val clientId = context.getString(com.sevengold.signalapp.R.string.default_web_client_id)
-            .trim()
+        val clientId = context.resources.getIdentifier(
+            "default_web_client_id",
+            "string",
+            context.packageName
+        ).takeIf { it != 0 }?.let { context.getString(it).trim() }.orEmpty()
         if (clientId.isBlank() || clientId.contains("YOUR_WEB_CLIENT_ID")) {
             error("Google Login belum dikonfigurasi. Isi Web Client ID di Firebase dan update google-services.json.")
         }
@@ -145,8 +148,14 @@ class AuthRepository(
 
         return try {
             val result = credentialManager.getCredential(context, request)
-            result.credential as? CustomCredential
-                ?.takeIf { it.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL }
+            val credential = result.credential
+            if (credential is CustomCredential &&
+                credential.type == GOOGLE_ID_TOKEN_CREDENTIAL_TYPE
+            ) {
+                credential
+            } else {
+                null
+            }
         } catch (_: Exception) {
             null
         }

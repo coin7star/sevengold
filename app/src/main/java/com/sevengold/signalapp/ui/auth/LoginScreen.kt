@@ -40,6 +40,7 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(state.success) {
         if (state.success) onLoginSuccess()
@@ -111,7 +112,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(12.dp))
                 GoogleButton(
                     loading = state.loading,
-                    onClick = { viewModel.loginWithGoogle(LocalContext.current) }
+                    onClick = { viewModel.loginWithGoogle(context) }
                 )
 
                 Spacer(Modifier.height(16.dp))
