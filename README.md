@@ -1,4 +1,4 @@
-# Signal App — XAUUSD (ADMIN / PREMIUM / USER)
+# Signal App — XAUUSD (ADMIN / PREMIUM / USER) #
 
 Aplikasi Android sederhana untuk distribusi sinyal trading XAUUSD dengan 3 role:
 
