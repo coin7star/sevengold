@@ -26,7 +26,22 @@ class SignalNotificationService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "Update Sinyal"
         val body = message.notification?.body ?: message.data["body"] ?: ""
 
-        Log.d("PremiumPush", "FCM received: event=${message.data["event"] ?: "notification"}")
+        val event = message.data["event"] ?: "notification"
+        Log.d("PremiumPush", "FCM received: event=$event")
+        NotificationCenterStore(this).add(
+            AppNotification(
+                id = System.currentTimeMillis(),
+                event = event,
+                title = title,
+                body = body,
+                pair = message.data["pair"] ?: "",
+                type = message.data["type"] ?: "",
+                entry = message.data["entry"] ?: "",
+                tp = message.data["tp"] ?: "",
+                sl = message.data["sl"] ?: "",
+                signalId = message.data["signalId"] ?: ""
+            )
+        )
         showNotification(title, body)
     }
 

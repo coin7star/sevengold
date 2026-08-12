@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,7 @@ import com.sevengold.signalapp.data.model.SignalType
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
+import com.sevengold.signalapp.ui.common.NotificationCenterScreen
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.SubscriptionBanner
@@ -48,7 +50,7 @@ import com.sevengold.signalapp.ui.theme.SignalGradients
 import java.text.SimpleDateFormat
 import java.util.*
 
-private enum class PremiumTab { SIGNALS, PROFILE }
+private enum class PremiumTab { SIGNALS, NOTIFICATIONS, PROFILE }
 
 @Composable
 fun PremiumSignalScreen(
@@ -82,7 +84,7 @@ fun PremiumSignalScreen(
                     },
                     title = {
                         Text(
-                            if (tab == PremiumTab.SIGNALS) "XAUUSD" else "Profil",
+                            when (tab) { PremiumTab.SIGNALS -> "XAUUSD"; PremiumTab.NOTIFICATIONS -> "Notifikasi"; PremiumTab.PROFILE -> "Profil" },
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -97,6 +99,17 @@ fun PremiumSignalScreen(
                         onClick = { tab = PremiumTab.SIGNALS },
                         icon = { Icon(Icons.Filled.ShowChart, contentDescription = null) },
                         label = { Text("Sinyal") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = GoldPrimary,
+                            selectedTextColor = GoldPrimary,
+                            indicatorColor = Color(0x33D4AF62)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = tab == PremiumTab.NOTIFICATIONS,
+                        onClick = { tab = PremiumTab.NOTIFICATIONS },
+                        icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
+                        label = { Text("Notifikasi") },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = GoldPrimary,
                             selectedTextColor = GoldPrimary,
@@ -144,6 +157,7 @@ fun PremiumSignalScreen(
                                 }
                             }
                         }
+                        PremiumTab.NOTIFICATIONS -> NotificationCenterScreen(Modifier.fillMaxSize())
                         PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
                     }
                 }
@@ -187,6 +201,13 @@ fun PremiumSignalScreen(
                         onClick = { tab = PremiumTab.SIGNALS; drawerOpen = false },
                         icon = { Icon(Icons.Filled.ShowChart, null) },
                         label = { Text("Sinyal") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    NavigationDrawerItem(
+                        selected = tab == PremiumTab.NOTIFICATIONS,
+                        onClick = { tab = PremiumTab.NOTIFICATIONS; drawerOpen = false },
+                        icon = { Icon(Icons.Filled.Notifications, null) },
+                        label = { Text("Notifikasi") },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                     NavigationDrawerItem(

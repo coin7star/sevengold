@@ -130,7 +130,7 @@ async function sendTelegramSignalNotifications(data, eventName) {
 }
 
 
-async function sendPremiumNotification(title, body, eventName) {
+async function sendPremiumNotification(title, body, eventName, signalId = "", signalData = {}) {
   try {
     const response = await getMessaging().send({
       topic: TOPIC,
@@ -147,6 +147,12 @@ async function sendPremiumNotification(title, body, eventName) {
         event: eventName,
         title,
         body,
+        signalId: String(signalId || ""),
+        pair: String(signalData.pair || ""),
+        type: typeLabel(signalData.type),
+        entry: String(signalData.entry ?? ""),
+        tp: String(signalData.tp ?? ""),
+        sl: String(signalData.sl ?? ""),
       },
     });
     console.log(`[PremiumPush] ${eventName} sent: ${response}`);
@@ -168,7 +174,9 @@ exports.onSignalCreated = onDocumentCreated("signals/{signalId}", async (event) 
     sendPremiumNotification(
       "📢 Sinyal Baru XAUUSD",
       signalBody(data),
-      "SIGNAL_CREATED"
+      "SIGNAL_CREATED",
+      event.params.signalId,
+      data
     ),
     sendTelegramSignalNotifications(data, "SIGNAL_CREATED"),
   ]);
@@ -193,7 +201,9 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
       sendPremiumNotification(
         "📢 Sinyal Aktif XAUUSD",
         signalBody(after),
-        "SIGNAL_ACTIVE"
+        "SIGNAL_ACTIVE",
+        event.params.signalId,
+        after
       ),
       sendTelegramSignalNotifications(after, "SIGNAL_ACTIVE"),
     ]);
@@ -210,7 +220,7 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
   if (!title) return;
 
   await Promise.allSettled([
-    sendPremiumNotification(title, signalBody(after), afterStatus),
+    sendPremiumNotification(title, signalBody(after), afterStatus, event.params.signalId, after),
     sendTelegramSignalNotifications(after, afterStatus),
   ]);
 });

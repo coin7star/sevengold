@@ -1306,3 +1306,21 @@ The Cloud Function reads Premium users from Firestore and sends Telegram notific
 
 Telegram connection remains managed by the Cloudflare Worker webhook:
 `/telegram/webhook`.
+
+
+## V24.9 — Notification Center + Signal Detail
+
+- Added an in-app Notification Center for signal updates.
+- Stores the latest 100 received FCM signal notifications locally on the device.
+- Supports unread/read state, mark-all-read, clear-all, and a compact detail dialog.
+- Notification detail shows event, pair, direction, Entry, TP, SL, timestamp, and signal ID when supplied.
+- Added a dedicated Notifikasi tab for USER and PREMIUM roles.
+- FCM payloads now carry signal metadata needed by the in-app notification detail view.
+- Existing FCM and Telegram signal delivery flows remain unchanged.
+
+### Test flow
+1. Login as PREMIUM.
+2. Publish a signal from Admin.
+3. Open **Notifikasi** to see the event.
+4. Tap a notification to open its details.
+5. Trigger TP / BE / SL / Cancel and verify each event appears as a separate notification.

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
+import com.sevengold.signalapp.ui.common.NotificationCenterScreen
 import com.sevengold.signalapp.ui.common.LockedSignalCard
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
@@ -42,7 +44,7 @@ import com.sevengold.signalapp.ui.theme.GoldLight
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 import com.sevengold.signalapp.ui.theme.SignalGradients
 
-private enum class UserTab { SIGNALS, PROFILE }
+private enum class UserTab { SIGNALS, NOTIFICATIONS, PROFILE }
 
 /**
  * Ditampilkan untuk role USER (belum / tidak lagi berlangganan).
@@ -109,6 +111,13 @@ fun UserSignalScreen(
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                     NavigationDrawerItem(
+                        selected = tab == UserTab.NOTIFICATIONS,
+                        onClick = { tab = UserTab.NOTIFICATIONS; drawerScope.launch { drawerState.close() } },
+                        icon = { Icon(Icons.Filled.Notifications, null) },
+                        label = { Text("Notifikasi") },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    NavigationDrawerItem(
                         selected = tab == UserTab.PROFILE,
                         onClick = { tab = UserTab.PROFILE; drawerScope.launch { drawerState.close() } },
                         icon = { Icon(Icons.Filled.Person, null) },
@@ -139,7 +148,7 @@ fun UserSignalScreen(
                 },
                 title = {
                     Text(
-                        if (tab == UserTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
+                        when (tab) { UserTab.SIGNALS -> "Sinyal XAUUSD"; UserTab.NOTIFICATIONS -> "Notifikasi"; UserTab.PROFILE -> "Profil" },
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -154,6 +163,17 @@ fun UserSignalScreen(
                     onClick = { tab = UserTab.SIGNALS },
                     icon = { Icon(Icons.Filled.ShowChart, contentDescription = null) },
                     label = { Text("Sinyal") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = GoldPrimary,
+                        selectedTextColor = GoldPrimary,
+                        indicatorColor = Color(0x33D4AF62)
+                    )
+                )
+                NavigationBarItem(
+                    selected = tab == UserTab.NOTIFICATIONS,
+                    onClick = { tab = UserTab.NOTIFICATIONS },
+                    icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
+                    label = { Text("Notifikasi") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = GoldPrimary,
                         selectedTextColor = GoldPrimary,
@@ -203,7 +223,8 @@ fun UserSignalScreen(
                         item { HistorySignalsSection(signals = historySignals, locked = true) }
                     }
                 }
-                    UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                    UserTab.NOTIFICATIONS -> NotificationCenterScreen(Modifier.fillMaxSize())
+                UserTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
                 }
             }
         }
