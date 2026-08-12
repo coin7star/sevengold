@@ -6,13 +6,16 @@ import com.sevengold.signalapp.data.model.SubscriptionCode
 import com.sevengold.signalapp.data.model.ReferralSettings
 import com.sevengold.signalapp.data.model.SubscriptionPackage
 import com.sevengold.signalapp.data.repository.AdminRepository
+import com.sevengold.signalapp.data.repository.AdminTelegramRepository
+import com.sevengold.signalapp.data.repository.AdminTelegramResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class AdminViewModel(
-    private val repo: AdminRepository = AdminRepository()
+    private val repo: AdminRepository = AdminRepository(),
+    private val telegramRepo: AdminTelegramRepository = AdminTelegramRepository()
 ) : ViewModel() {
 
     private val _codes = MutableStateFlow<List<SubscriptionCode>>(emptyList())
@@ -73,6 +76,37 @@ class AdminViewModel(
     }
 
     fun clearSettingsMessage() { _settingsMessage.value = null }
+    private val _telegramResult = MutableStateFlow(AdminTelegramResult())
+    val telegramResult: StateFlow<AdminTelegramResult> = _telegramResult
+
+    private val _telegramMessage = MutableStateFlow<String?>(null)
+    val telegramMessage: StateFlow<String?> = _telegramMessage
+
+    private val _telegramLoading = MutableStateFlow(false)
+    val telegramLoading: StateFlow<Boolean> = _telegramLoading
+
+    fun telegramAction(action: String) {
+        if (_telegramLoading.value) return
+        viewModelScope.launch {
+            _telegramLoading.value = true
+            val result = telegramRepo.action(action)
+            _telegramMessage.value = result.fold(
+                onSuccess = { r ->
+                    _telegramResult.value = r
+                    when (action) {
+                        "testme" -> "Test notification berhasil dikirim ke Telegram admin."
+                        "testsignal" -> "Test broadcast selesai: ${r.sent} terkirim, ${r.failed} gagal."
+                        else -> "Statistik Telegram diperbarui."
+                    }
+                },
+                onFailure = { "Gagal: ${it.message ?: "permintaan tidak dapat diproses"}" }
+            )
+            _telegramLoading.value = false
+        }
+    }
+
+    fun clearTelegramMessage() { _telegramMessage.value = null }
+
 
     fun saveSubscriptionPackages(packages: List<SubscriptionPackage>) {
         val normalized = packages.mapIndexed { index, pkg ->

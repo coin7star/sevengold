@@ -10,6 +10,30 @@ Stack: **Kotlin + Jetpack Compose + Firebase (Auth + Firestore)**, di-build otom
 
 ---
 
+## V24.8.1 — Telegram Admin Control & Test Signal
+
+Admin Panel sekarang memiliki **Telegram Control** untuk memeriksa koneksi bot dan menguji pengiriman notifikasi Premium tanpa menerbitkan sinyal trading sungguhan.
+
+- **Test My Telegram** — mengirim test notification ke Telegram admin pertama pada `ADMIN_TELEGRAM_CHAT_IDS`.
+- **Test Premium Broadcast** — broadcast hanya ke Premium aktif yang sudah terhubung Telegram, dengan konfirmasi dan rate limit 30 detik.
+- **Statistik Telegram** — Premium aktif, Telegram terhubung, dan belum terhubung.
+- Bot admin: `/admin`, `/testme`, `/testsignal`, `/premium_count`, `/telegram_stats`.
+- Bot pengguna: `/status`, `/disconnect`, `/disconnect_confirm`.
+- Flow koneksi `/start SG-XXXXXX` tetap dipertahankan.
+- Admin Panel menggunakan Firebase ID token untuk memanggil endpoint Worker yang dilindungi UID admin.
+
+### Cloudflare configuration
+
+Worker membutuhkan: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `ADMIN_UIDS`, dan `ADMIN_TELEGRAM_CHAT_IDS`.
+
+Untuk admin Telegram yang digunakan saat ini, isi `ADMIN_TELEGRAM_CHAT_IDS` dengan `1183251688` (atau beberapa ID dipisahkan koma). Jangan hardcode ID/token/secret di source code.
+
+Webhook URL tetap:
+
+`https://sevengoldapp.coin7star.workers.dev/telegram/webhook`
+
+`TELEGRAM_WEBHOOK_SECRET` **bukan** bagian dari path URL. Secret dikirim ke Telegram saat `setWebhook` sebagai `secret_token`, kemudian Telegram mengirimkannya melalui header `X-Telegram-Bot-Api-Secret-Token`.
+
 ## V24.5 — Navigasi Samping & Mobile UI
 
 Penyempurnaan tampilan untuk HP berdasarkan basis V24.4:
@@ -1194,3 +1218,50 @@ Perbaikan koneksi Telegram Premium:
 - Deep link membawa kode `SG-XXXXXX` melalui parameter `/start`, sehingga user tidak perlu mengetik kode manual.
 - Worker tetap menerima format `SG-XXXXXX` dan juga menormalisasi kode lama `XXXXXX` menjadi `SG-XXXXXX` untuk kompatibilitas.
 - Token bot tetap hanya disimpan sebagai Cloudflare Secret; tidak pernah ditanam di APK.
+
+## V24.8.1 — Telegram Admin Control & Test Notifications
+
+Versi ini menambahkan kontrol Telegram khusus administrator untuk menguji alur notifikasi Premium tanpa menerbitkan sinyal trading sungguhan.
+
+### Fitur
+
+- Menu **Telegram Control** di Admin Panel.
+- Statistik Premium dan koneksi Telegram.
+- **Test My Telegram** untuk menguji Bot API/webhook ke Telegram admin.
+- **Test Premium Broadcast** untuk mengirim test signal hanya ke akun Premium yang sudah terhubung Telegram.
+- Command bot admin: `/admin`, `/testme`, `/testsignal`, `/premium_count`, `/telegram_stats`.
+- Command pengguna: `/status`, `/disconnect`, `/disconnect_confirm`.
+- `/start SG-XXXXXX` tetap menjadi flow utama untuk menghubungkan akun.
+- Broadcast bersifat resilient: kegagalan satu chat tidak menghentikan pengiriman ke chat lain.
+- Test broadcast memiliki rate limit 30 detik per admin.
+- Admin authorization menggunakan Firebase UID untuk Admin Panel dan Telegram `chat.id` untuk command bot.
+
+### Cloudflare Worker secrets / variables
+
+Pastikan Worker memiliki konfigurasi berikut. Nilai rahasia **jangan** dimasukkan ke repository:
+
+- `TELEGRAM_BOT_TOKEN` — secret token bot Telegram.
+- `TELEGRAM_WEBHOOK_SECRET` — secret yang sama dengan `secret_token` saat `setWebhook`.
+- `FIREBASE_PROJECT_ID` — project Firebase.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` — service account JSON Firebase sebagai secret.
+- `ADMIN_UIDS` — Firebase UID admin yang diizinkan memakai endpoint Worker.
+- `ADMIN_TELEGRAM_CHAT_IDS` — daftar Telegram chat ID admin, dipisahkan koma. Contoh: `1183251688`.
+
+### Webhook Telegram
+
+URL webhook tetap:
+
+`https://sevengoldapp.coin7star.workers.dev/telegram/webhook`
+
+Secret **tidak** ditempel di ujung URL Worker. Secret dikirim ke Telegram API sebagai parameter `secret_token` pada saat `setWebhook`, dan Telegram kemudian mengirimkannya melalui header `X-Telegram-Bot-Api-Secret-Token`.
+
+### Admin Panel
+
+Buka **Admin Panel → Telegram Control**:
+
+1. **Perbarui Statistik** untuk membaca jumlah Premium dan koneksi Telegram.
+2. **Test My Telegram** untuk mengirim notifikasi uji ke Telegram admin pertama pada `ADMIN_TELEGRAM_CHAT_IDS`.
+3. **Test Premium Broadcast** untuk mengirim test signal ke seluruh Premium aktif yang memiliki `telegramChatId`.
+4. Broadcast meminta konfirmasi sebelum dikirim dan dibatasi minimal 30 detik per admin.
+
+Test signal tidak menjalankan atau mengubah data trading.

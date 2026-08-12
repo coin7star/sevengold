@@ -16,6 +16,7 @@ let cachedGoogleCerts = null;
 let cachedGoogleCertsExpiresAt = 0;
 let cachedAccessToken = null;
 let cachedAccessTokenExpiresAt = 0;
+const adminTestSignalLastAt = new Map();
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -267,6 +268,114 @@ async function sendTelegramToPremium(env, projectId, accessToken, signal, event)
   return { sent, skipped, failed };
 }
 
+
+function adminTelegramChatIds(env) {
+  return String(env.ADMIN_TELEGRAM_CHAT_IDS || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function isTelegramAdmin(env, chatId) {
+  return adminTelegramChatIds(env).includes(String(chatId));
+}
+
+async function findPremiumTelegramUsers(env, projectId, accessToken) {
+  const rows = await firestoreRunQuery(env, projectId, accessToken, "role", "PREMIUM");
+  const now = Date.now();
+  const users = [];
+  for (const row of rows) {
+    if (!row.document) continue;
+    const data = fromFirestoreDoc(row.document);
+    const chatId = String(data.telegramChatId || "").trim();
+    const expiry = Number(data.premiumExpiryMillis || 0);
+    if (!chatId || expiry <= now) continue;
+    users.push({
+      uid: row.document.name.split("/").pop(),
+      chatId,
+      data,
+    });
+  }
+  return users;
+}
+
+async function telegramStats(env, projectId, accessToken) {
+  const rows = await firestoreRunQuery(env, projectId, accessToken, "role", "PREMIUM");
+  const now = Date.now();
+  let premium = 0;
+  let connected = 0;
+  for (const row of rows) {
+    if (!row.document) continue;
+    const data = fromFirestoreDoc(row.document);
+    if (Number(data.premiumExpiryMillis || 0) <= now) continue;
+    premium++;
+    if (String(data.telegramChatId || "").trim()) connected++;
+  }
+  return { premium, connected, disconnected: Math.max(0, premium - connected) };
+}
+
+async function broadcastTelegram(env, users, title, body) {
+  let sent = 0;
+  let failed = 0;
+  for (const user of users) {
+    try {
+      await sendTelegram(env, user.chatId, title, body);
+      sent++;
+    } catch (error) {
+      failed++;
+      console.error("Telegram broadcast send failed", JSON.stringify({ error: error?.message }));
+    }
+  }
+  return { sent, failed };
+}
+
+async function handleAdminTelegramAction(request, env, claims, payload) {
+  const adminUids = String(env.ADMIN_UIDS || "").split(",").map((v) => v.trim()).filter(Boolean);
+  if (!adminUids.includes(String(claims.sub || ""))) return json({ ok: false, error: "Admin access required" }, 403);
+
+  const projectId = String(env.FIREBASE_PROJECT_ID || "").trim();
+  const action = String(payload.action || "").trim();
+  if (!projectId || !action) return json({ ok: false, error: "Invalid request" }, 400);
+
+  const accessToken = await getGoogleAccessToken(env, getServiceAccount(env));
+  if (action === "stats") {
+    return json({ ok: true, ...(await telegramStats(env, projectId, accessToken)) });
+  }
+
+  if (action === "testme") {
+    const chatId = adminTelegramChatIds(env)[0];
+    if (!chatId) return json({ ok: false, error: "ADMIN_TELEGRAM_CHAT_IDS is not configured" }, 500);
+    await sendTelegram(
+      env,
+      chatId,
+      "🧪 TEST NOTIFICATION",
+      "🚨 TEST SIGNAL\n\n🟢 BTCUSDT\n📈 LONG\n\nEntry: 116250\nSL: 115500\nTP1: 117000\nTP2: 118200\n\n⚡ TEST NOTIFICATION — NOT A REAL TRADE"
+    );
+    return json({ ok: true, sent: 1 });
+  }
+
+  if (action === "testsignal") {
+    const key = String(claims.sub);
+    const last = Number(adminTestSignalLastAt.get(key) || 0);
+    if (last && Date.now() - last < 30000) {
+      return json({ ok: false, error: "⏳ Please wait before sending another test broadcast." }, 429);
+    }
+    adminTestSignalLastAt.set(key, Date.now());
+
+    const stats = await telegramStats(env, projectId, accessToken);
+    const users = await findPremiumTelegramUsers(env, projectId, accessToken);
+    const result = await broadcastTelegram(
+      env,
+      users,
+      "🚨 TEST PREMIUM SIGNAL",
+      "🟢 BTCUSDT\n📈 LONG\n\nEntry: 116250\nSL: 115500\nTP1: 117000\nTP2: 118200\n\n⚡ TEST SIGNAL — NOT A REAL TRADE"
+    );
+    return json({ ok: true, premium: stats.premium, connected: stats.connected, ...result });
+  }
+
+  return json({ ok: false, error: "Unsupported admin Telegram action" }, 400);
+}
+
 async function handleTelegramWebhook(request, env) {
   const projectId = String(env.FIREBASE_PROJECT_ID || "").trim();
   if (!projectId) return json({ ok: false, error: "FIREBASE_PROJECT_ID is not configured" }, 500);
@@ -286,16 +395,96 @@ async function handleTelegramWebhook(request, env) {
   const chatId = message?.chat?.id;
   const username = message?.from?.username || "";
   const text = String(message?.text || "").trim();
-  if (!chatId || !text.startsWith("/start")) return json({ ok: true, ignored: true });
+  if (!chatId || !text.startsWith("/")) return json({ ok: true, ignored: true });
 
+  const command = text.split(/\s+/)[0].split("@")[0].toLowerCase();
   const rawCode = text.split(/\s+/)[1]?.trim().toUpperCase() || "";
+
+  const accessToken = await getGoogleAccessToken(env, getServiceAccount(env));
+
+  if (command === "/admin") {
+    if (!isTelegramAdmin(env, chatId)) return json({ ok: true, ignored: true });
+    await sendTelegram(env, chatId, "🛠 ADMIN PANEL", "📡 /testme\n🚨 /testsignal\n👥 /premium_count\n📊 /telegram_stats");
+    return json({ ok: true });
+  }
+
+  if (command === "/status") {
+    const connection = await firestoreRunQuery(env, projectId, accessToken, "telegramChatId", String(chatId));
+    const connected = connection.some((row) => row.document);
+    await sendTelegram(env, chatId, "📡 Status Telegram", connected ? "🟢 Connected\n🔔 Notifications: ON" : "⚪ Belum terhubung ke akun SevenGold.");
+    return json({ ok: true });
+  }
+
+  if (command === "/premium_count") {
+    if (!isTelegramAdmin(env, chatId)) return json({ ok: true, ignored: true });
+    const stats = await telegramStats(env, projectId, accessToken);
+    await sendTelegram(env, chatId, "👥 PREMIUM USERS", `Premium accounts: ${stats.premium}\nTelegram connected: ${stats.connected}\nTelegram disconnected: ${stats.disconnected}`);
+    return json({ ok: true, ...stats });
+  }
+
+  if (command === "/telegram_stats") {
+    if (!isTelegramAdmin(env, chatId)) return json({ ok: true, ignored: true });
+    const stats = await telegramStats(env, projectId, accessToken);
+    await sendTelegram(env, chatId, "📊 TELEGRAM STATUS", `🟢 Connected: ${stats.connected}\n⚪ Not connected: ${stats.disconnected}`);
+    return json({ ok: true, ...stats });
+  }
+
+  if (command === "/testme") {
+    if (!isTelegramAdmin(env, chatId)) return json({ ok: true, ignored: true });
+    await sendTelegram(env, chatId, "🧪 TEST NOTIFICATION", "🚨 TEST SIGNAL\n\n🟢 BTCUSDT\n📈 LONG\n\nEntry: 116250\nSL: 115500\nTP1: 117000\nTP2: 118200\n\n⚡ TEST NOTIFICATION — NOT A REAL TRADE");
+    return json({ ok: true });
+  }
+
+  if (command === "/testsignal") {
+    if (!isTelegramAdmin(env, chatId)) return json({ ok: true, ignored: true });
+    const key = `telegram:${String(chatId)}`;
+    const last = Number(adminTestSignalLastAt.get(key) || 0);
+    if (last && Date.now() - last < 30000) {
+      await sendTelegram(env, chatId, "⏳ Tunggu sebentar", "Test broadcast dibatasi 30 detik untuk mencegah pengiriman berulang.");
+      return json({ ok: true, rateLimited: true });
+    }
+    adminTestSignalLastAt.set(key, Date.now());
+    const stats = await telegramStats(env, projectId, accessToken);
+    const users = await findPremiumTelegramUsers(env, projectId, accessToken);
+    const result = await broadcastTelegram(env, users, "🚨 TEST PREMIUM SIGNAL", "🟢 BTCUSDT\n📈 LONG\n\nEntry: 116250\nSL: 115500\nTP1: 117000\nTP2: 118200\n\n⚡ TEST SIGNAL — NOT A REAL TRADE");
+    await sendTelegram(env, chatId, "✅ Test signal completed", `👥 Premium users: ${stats.premium}\n🔗 Telegram connected: ${stats.connected}\n📨 Sent: ${result.sent}\n❌ Failed: ${result.failed}`);
+    return json({ ok: true, ...result });
+  }
+
+  if (command === "/disconnect") {
+    const rows = await firestoreRunQuery(env, projectId, accessToken, "telegramChatId", String(chatId));
+    if (!rows.some((row) => row.document)) {
+      await sendTelegram(env, chatId, "ℹ️ Telegram belum terhubung", "Tidak ada koneksi Telegram aktif pada akun ini.");
+      return json({ ok: true });
+    }
+    await sendTelegram(env, chatId, "⚠️ Putuskan koneksi Telegram?", "Kirim /disconnect_confirm untuk melanjutkan.");
+    return json({ ok: true });
+  }
+
+  if (command === "/disconnect_confirm") {
+    const rows = await firestoreRunQuery(env, projectId, accessToken, "telegramChatId", String(chatId));
+    for (const row of rows) {
+      if (row.document) {
+        const uid = row.document.name.split("/").pop();
+        await updateUserTelegram(env, projectId, accessToken, uid, {
+          telegramChatId: "",
+          telegramUsername: "",
+          telegramConnectedAt: null,
+          telegramNotificationEvents: [],
+        });
+      }
+    }
+    await sendTelegram(env, chatId, "✅ Telegram terputus", "Koneksi Telegram dari akun SevenGold sudah dihapus.");
+    return json({ ok: true });
+  }
+
+  if (!command.startsWith("/start")) return json({ ok: true, ignored: true });
   const code = rawCode.startsWith("SG-") ? rawCode : (rawCode ? `SG-${rawCode}` : "");
   if (!code) {
     await sendTelegram(env, chatId, "🔗 Hubungkan SevenGold", "Kirim /start KODE yang tampil di aplikasi SevenGold.");
     return json({ ok: true });
   }
 
-  const accessToken = await getGoogleAccessToken(env, getServiceAccount(env));
   const connection = await findTelegramConnection(env, projectId, accessToken, code);
   if (!connection) {
     await sendTelegram(env, chatId, "❌ Kode tidak valid", "Kode koneksi tidak ditemukan atau sudah kedaluwarsa. Buat kode baru dari Profil Premium.");
@@ -317,12 +506,7 @@ async function handleTelegramWebhook(request, env) {
     telegramNotificationEvents: ["SIGNAL_CREATED", "TP_HIT", "SL_HIT", "BE", "CANCELLED"],
   });
 
-  await sendTelegram(
-    env,
-    chatId,
-    "✅ Telegram berhasil terhubung",
-    "Notifikasi sinyal Premium SevenGold sekarang aktif. Kamu bisa mengatur jenis notifikasi dari Profil di aplikasi."
-  );
+  await sendTelegram(env, chatId, "✅ Telegram berhasil terhubung", "Notifikasi sinyal Premium SevenGold sekarang aktif. Kamu bisa mengatur jenis notifikasi dari Profil di aplikasi.");
   return json({ ok: true, connected: true });
 }
 
@@ -383,6 +567,21 @@ export default {
       } catch (error) {
         console.error("Telegram webhook error", error);
         return json({ ok: false, error: error?.message || "Telegram webhook failed" }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/telegram") {
+      const auth = request.headers.get("authorization") || "";
+      const match = auth.match(/^Bearer\s+(.+)$/i);
+      if (!match) return json({ ok: false, error: "Missing Firebase ID token" }, 401);
+      try {
+        const projectId = String(env.FIREBASE_PROJECT_ID || "").trim();
+        const claims = await verifyFirebaseIdToken(match[1], projectId);
+        const payload = await request.json();
+        return await handleAdminTelegramAction(request, env, claims, payload);
+      } catch (error) {
+        console.error("Admin Telegram action error", error);
+        return json({ ok: false, error: error?.message || "Admin Telegram action failed" }, 500);
       }
     }
 

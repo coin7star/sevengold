@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
@@ -56,7 +57,7 @@ import com.sevengold.signalapp.ui.theme.GoldPrimary
 import java.util.Locale
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), TELEGRAM("Telegram"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
 }
 
 @Composable
@@ -93,6 +94,7 @@ fun AdminPanelScreen(
                             when (tab) {
                                 AdminTab.PUBLISH -> "Terbitkan Sinyal"
                                 AdminTab.SIGNALS -> "Kelola Sinyal"
+                                AdminTab.TELEGRAM -> "Telegram Control"
                                 AdminTab.CODES -> "Kode / Voucher"
                                 AdminTab.PACKAGES -> "Paket Langganan"
                                 AdminTab.SUBSCRIPTIONS -> "Pesanan"
@@ -127,6 +129,7 @@ fun AdminPanelScreen(
                 when (tab) {
                     AdminTab.PUBLISH -> PublishSignalTab(adminUid)
                     AdminTab.SIGNALS -> ManageSignalsTab()
+                    AdminTab.TELEGRAM -> AdminTelegramTab()
                     AdminTab.CODES -> ManageCodesTab(adminUid)
                     AdminTab.PACKAGES -> SubscriptionPackagesTab()
                     AdminTab.SUBSCRIPTIONS -> ManageSubscriptionOrdersTab(subscriptionVm)
@@ -195,6 +198,15 @@ fun AdminPanelScreen(
                         icon = Icons.Filled.ShowChart,
                         onClick = {
                             tab = AdminTab.SIGNALS
+                            drawerOpen = false
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.TELEGRAM,
+                        label = "Telegram Control",
+                        icon = Icons.Filled.Notifications,
+                        onClick = {
+                            tab = AdminTab.TELEGRAM
                             drawerOpen = false
                         }
                     )
@@ -524,6 +536,109 @@ private fun calculateTpFromRR(type: SignalType, entry: Double?, sl: Double?, rr:
     return when (type) {
         SignalType.BUY -> entry + rewardDistance
         SignalType.SELL -> entry - rewardDistance
+    }
+}
+
+
+@Composable
+private fun AdminTelegramTab(vm: AdminViewModel = viewModel()) {
+    val result by vm.telegramResult.collectAsState()
+    val message by vm.telegramMessage.collectAsState()
+    val loading by vm.telegramLoading.collectAsState()
+    var showBroadcastConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { vm.telegramAction("stats") }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Telegram Control", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            "Kelola dan uji notifikasi Telegram Premium tanpa harus mengirim sinyal sungguhan.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Card(shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Status Telegram", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TelegramStatCard("Premium", result.premium, Modifier.weight(1f))
+                    TelegramStatCard("Terhubung", result.connected, Modifier.weight(1f))
+                    TelegramStatCard("Belum terhubung", result.disconnected, Modifier.weight(1f))
+                }
+                OutlinedButton(
+                    onClick = { vm.telegramAction("stats") },
+                    enabled = !loading,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Perbarui Statistik") }
+            }
+        }
+
+        Card(shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Pengujian Notifikasi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Gunakan Test My Telegram untuk memastikan bot dan webhook bekerja. Test Premium Broadcast hanya dikirim ke akun Premium yang sudah terhubung.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(
+                    onClick = { vm.telegramAction("testme") },
+                    enabled = !loading,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("🧪 Test My Telegram") }
+                Button(
+                    onClick = { showBroadcastConfirm = true },
+                    enabled = !loading && result.connected > 0,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("🚨 Test Premium Broadcast") }
+            }
+        }
+
+        if (message != null) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Text(message.orEmpty(), Modifier.padding(14.dp))
+            }
+        }
+
+        if (result.sent > 0 || result.failed > 0) {
+            Card(shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("Hasil Pengujian Terakhir", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Terkirim: ${result.sent}")
+                    Text("Gagal: ${result.failed}")
+                }
+            }
+        }
+    }
+
+    if (showBroadcastConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBroadcastConfirm = false },
+            title = { Text("Kirim Test Broadcast?") },
+            text = { Text("Test signal akan dikirim ke ${result.connected} akun Premium yang sudah terhubung ke Telegram. Ini hanya notifikasi pengujian, bukan sinyal trading nyata.") },
+            confirmButton = {
+                TextButton(onClick = { showBroadcastConfirm = false; vm.telegramAction("testsignal") }) { Text("Kirim") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBroadcastConfirm = false }) { Text("Batal") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TelegramStatCard(label: String, value: Int, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(Modifier.padding(12.dp)) {
+            Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = GoldPrimary)
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
