@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -134,30 +135,29 @@ fun AdminPanelScreen(
         }
 
         if (drawerOpen) {
-            Surface(
+            // Scrim + drawer dibuat terpisah supaya tap X selalu menutup seluruh overlay.
+            androidx.compose.foundation.Canvas(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        var dragDistance = 0f
-                        detectHorizontalDragGestures(
-                            onHorizontalDrag = { _, dragAmount ->
-                                dragDistance += dragAmount
-                            },
-                            onDragEnd = {
-                                if (dragDistance > 80f) {
-                                    drawerOpen = false
-                                }
-                                dragDistance = 0f
-                            }
-                        )
-                    },
+                    .clickable { drawerOpen = false }
+            ) {
+                drawRect(Color.Black.copy(alpha = 0.48f))
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = 320.dp)
+                    .align(Alignment.CenterStart)
+                    .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
+                    .shadow(16.dp, RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxHeight()) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(start = 20.dp, top = 18.dp, end = 12.dp, bottom = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -180,68 +180,43 @@ fun AdminPanelScreen(
                         selected = tab == AdminTab.PUBLISH,
                         label = "Terbitkan Sinyal",
                         icon = Icons.Filled.ShowChart,
-                        onClick = {
-                            tab = AdminTab.PUBLISH
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.PUBLISH; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.SIGNALS,
                         label = "Kelola Sinyal",
                         icon = Icons.Filled.ShowChart,
-                        onClick = {
-                            tab = AdminTab.SIGNALS
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.SIGNALS; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.CODES,
                         label = "Kode / Voucher",
                         icon = Icons.Filled.AdminPanelSettings,
-                        onClick = {
-                            tab = AdminTab.CODES
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.CODES; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.PACKAGES,
                         label = "Paket Langganan",
                         icon = Icons.Filled.WorkspacePremium,
-                        onClick = {
-                            tab = AdminTab.PACKAGES
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.PACKAGES; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.SUBSCRIPTIONS,
-                        label = if (pendingOrders.isNotEmpty()) {
-                            "Pesanan (${pendingOrders.size})"
-                        } else {
-                            "Pesanan"
-                        },
+                        label = if (pendingOrders.isNotEmpty()) "Pesanan (${pendingOrders.size})" else "Pesanan",
                         icon = Icons.Filled.WorkspacePremium,
-                        onClick = {
-                            tab = AdminTab.SUBSCRIPTIONS
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.SUBSCRIPTIONS; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.USERS,
                         label = "Pengguna",
                         icon = Icons.Filled.Person,
-                        onClick = {
-                            tab = AdminTab.USERS
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.USERS; drawerOpen = false }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.REFERRAL,
                         label = "Referral",
                         icon = Icons.Filled.AdminPanelSettings,
-                        onClick = {
-                            tab = AdminTab.REFERRAL
-                            drawerOpen = false
-                        }
+                        onClick = { tab = AdminTab.REFERRAL; drawerOpen = false }
                     )
 
                     Spacer(Modifier.weight(1f))
@@ -249,10 +224,7 @@ fun AdminPanelScreen(
 
                     NavigationDrawerItem(
                         selected = tab == AdminTab.PROFILE,
-                        onClick = {
-                            tab = AdminTab.PROFILE
-                            drawerOpen = false
-                        },
+                        onClick = { tab = AdminTab.PROFILE; drawerOpen = false },
                         icon = { Icon(Icons.Filled.Person, contentDescription = null) },
                         label = { Text("Profil Admin") },
                         modifier = Modifier.padding(horizontal = 12.dp)
@@ -271,14 +243,10 @@ fun AdminPanelScreen(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                "Administrator",
-                                color = GoldPrimary,
-                                style = MaterialTheme.typography.labelMedium
-                            )
+                            Text("Administrator", color = GoldPrimary)
                         }
                         IconButton(onClick = onLogout) {
-                            Icon(Icons.Filled.Logout, contentDescription = "Keluar")
+                            Icon(Icons.Filled.Logout, contentDescription = "Keluar", tint = DangerRed)
                         }
                     }
                 }

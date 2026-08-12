@@ -74,7 +74,10 @@ fun PremiumSignalScreen(
         gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = 320.dp)
+                    .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)),
                 drawerContainerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(Modifier.fillMaxHeight()) {
