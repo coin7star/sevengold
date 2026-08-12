@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -34,7 +35,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -135,29 +135,30 @@ fun AdminPanelScreen(
         }
 
         if (drawerOpen) {
-            // Scrim + drawer dibuat terpisah supaya tap X selalu menutup seluruh overlay.
-            androidx.compose.foundation.Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { drawerOpen = false }
-            ) {
-                drawRect(Color.Black.copy(alpha = 0.48f))
-            }
-
             Surface(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .widthIn(max = 320.dp)
-                    .align(Alignment.CenterStart)
-                    .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
-                    .shadow(16.dp, RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)),
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        var dragDistance = 0f
+                        detectHorizontalDragGestures(
+                            onHorizontalDrag = { _, dragAmount ->
+                                dragDistance += dragAmount
+                            },
+                            onDragEnd = {
+                                if (dragDistance > 80f) {
+                                    drawerOpen = false
+                                }
+                                dragDistance = 0f
+                            }
+                        )
+                    },
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(Modifier.fillMaxHeight()) {
+                Column(Modifier.fillMaxSize()) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(start = 20.dp, top = 18.dp, end = 12.dp, bottom = 14.dp),
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -180,43 +181,68 @@ fun AdminPanelScreen(
                         selected = tab == AdminTab.PUBLISH,
                         label = "Terbitkan Sinyal",
                         icon = Icons.Filled.ShowChart,
-                        onClick = { tab = AdminTab.PUBLISH; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.PUBLISH
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.SIGNALS,
                         label = "Kelola Sinyal",
                         icon = Icons.Filled.ShowChart,
-                        onClick = { tab = AdminTab.SIGNALS; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.SIGNALS
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.CODES,
                         label = "Kode / Voucher",
                         icon = Icons.Filled.AdminPanelSettings,
-                        onClick = { tab = AdminTab.CODES; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.CODES
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.PACKAGES,
                         label = "Paket Langganan",
                         icon = Icons.Filled.WorkspacePremium,
-                        onClick = { tab = AdminTab.PACKAGES; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.PACKAGES
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.SUBSCRIPTIONS,
-                        label = if (pendingOrders.isNotEmpty()) "Pesanan (${pendingOrders.size})" else "Pesanan",
+                        label = if (pendingOrders.isNotEmpty()) {
+                            "Pesanan (${pendingOrders.size})"
+                        } else {
+                            "Pesanan"
+                        },
                         icon = Icons.Filled.WorkspacePremium,
-                        onClick = { tab = AdminTab.SUBSCRIPTIONS; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.SUBSCRIPTIONS
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.USERS,
                         label = "Pengguna",
                         icon = Icons.Filled.Person,
-                        onClick = { tab = AdminTab.USERS; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.USERS
+                            drawerOpen = false
+                        }
                     )
                     AdminDrawerItem(
                         selected = tab == AdminTab.REFERRAL,
                         label = "Referral",
                         icon = Icons.Filled.AdminPanelSettings,
-                        onClick = { tab = AdminTab.REFERRAL; drawerOpen = false }
+                        onClick = {
+                            tab = AdminTab.REFERRAL
+                            drawerOpen = false
+                        }
                     )
 
                     Spacer(Modifier.weight(1f))
@@ -224,7 +250,10 @@ fun AdminPanelScreen(
 
                     NavigationDrawerItem(
                         selected = tab == AdminTab.PROFILE,
-                        onClick = { tab = AdminTab.PROFILE; drawerOpen = false },
+                        onClick = {
+                            tab = AdminTab.PROFILE
+                            drawerOpen = false
+                        },
                         icon = { Icon(Icons.Filled.Person, contentDescription = null) },
                         label = { Text("Profil Admin") },
                         modifier = Modifier.padding(horizontal = 12.dp)
@@ -243,10 +272,14 @@ fun AdminPanelScreen(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text("Administrator", color = GoldPrimary)
+                            Text(
+                                "Administrator",
+                                color = GoldPrimary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                         IconButton(onClick = onLogout) {
-                            Icon(Icons.Filled.Logout, contentDescription = "Keluar", tint = DangerRed)
+                            Icon(Icons.Filled.Logout, contentDescription = "Keluar")
                         }
                     }
                 }
@@ -414,6 +447,11 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
     var typeFilter by remember { mutableStateOf<SignalType?>(null) }
     var statusFilter by remember { mutableStateOf<SignalStatus?>(null) }
     var showAll by remember { mutableStateOf(false) }
+    var signalToDelete by remember { mutableStateOf<Signal?>(null) }
+    var showClearCancelledDialog by remember { mutableStateOf(false) }
+    var actionMessage by remember { mutableStateOf<String?>(null) }
+
+    val cancelledCount = remember(signals) { signals.count { it.status == SignalStatus.CANCELLED } }
 
     val filteredSignals = remember(signals, searchQuery, typeFilter, statusFilter) {
         val query = searchQuery.trim().lowercase()
@@ -452,9 +490,21 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (filteredSignals.size > 8) {
-                TextButton(onClick = { showAll = !showAll }) {
-                    Text(if (showAll) "Ringkas" else "Lihat semua")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (cancelledCount > 0) {
+                    TextButton(
+                        onClick = { showClearCancelledDialog = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Bersihkan Batal")
+                    }
+                }
+                if (filteredSignals.size > 8) {
+                    TextButton(onClick = { showAll = !showAll }) {
+                        Text(if (showAll) "Ringkas" else "Lihat semua")
+                    }
                 }
             }
         }
@@ -557,6 +607,15 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        actionMessage?.let { message ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Text(message, modifier = Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
         Spacer(Modifier.height(6.dp))
 
         LazyColumn(
@@ -628,11 +687,62 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
                             TextButton(onClick = { vm.updateStatus(signal, SignalStatus.CANCELLED) }) { Text("Batal") }
                             TextButton(onClick = { vm.updateStatus(signal, SignalStatus.TP_HIT) }) { Text("TP Hit") }
                             TextButton(onClick = { vm.updateStatus(signal, SignalStatus.SL_HIT) }) { Text("SL Hit") }
+                            if (signal.status == SignalStatus.CANCELLED) {
+                                Spacer(Modifier.weight(1f))
+                                IconButton(onClick = { signalToDelete = signal }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Hapus sinyal", tint = DangerRed)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    signalToDelete?.let { signal ->
+        AlertDialog(
+            onDismissRequest = { signalToDelete = null },
+            title = { Text("Hapus sinyal?") },
+            text = { Text("Sinyal ${signal.type} ${signal.pair} yang berstatus Batal akan dihapus permanen dari database Firebase. Tindakan ini tidak bisa dibatalkan.") },
+            dismissButton = { TextButton(onClick = { signalToDelete = null }) { Text("Batal") } },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val target = signalToDelete
+                        signalToDelete = null
+                        if (target != null) {
+                            vm.deleteSignal(target) { success, error ->
+                                actionMessage = if (success) "Sinyal ${target.type} ${target.pair} berhasil dihapus dari Firebase." else "Gagal menghapus sinyal: ${error ?: "tidak diketahui"}"
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Hapus permanen") }
+            }
+        )
+    }
+
+    if (showClearCancelledDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCancelledDialog = false },
+            title = { Text("Bersihkan semua sinyal Batal?") },
+            text = { Text("Sebanyak $cancelledCount sinyal Batal akan dihapus permanen dari Firebase. Sinyal Aktif, TP, SL, dan BE tidak akan ikut terhapus.") },
+            dismissButton = { TextButton(onClick = { showClearCancelledDialog = false }) { Text("Jangan") } },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showClearCancelledDialog = false
+                        vm.deleteCancelledSignals { success, deleted, error ->
+                            actionMessage = if (success) {
+                                if (deleted > 0) "Berhasil menghapus $deleted sinyal Batal dari Firebase." else "Tidak ada sinyal Batal yang perlu dihapus."
+                            } else "Gagal membersihkan sinyal Batal: ${error ?: "tidak diketahui"}"
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Bersihkan") }
+            }
+        )
     }
 }
 

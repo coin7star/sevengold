@@ -39,4 +39,30 @@ class SignalRepository(
         collection.document(signalId).update("status", status.name).await()
         Unit
     }
+
+    /** Hapus satu sinyal secara permanen dari Firestore. Hanya dipanggil oleh ADMIN. */
+    suspend fun deleteSignal(signalId: String): Result<Unit> = runCatching {
+        collection.document(signalId).delete().await()
+        Unit
+    }
+
+    /** Hapus semua sinyal yang berstatus CANCELLED dalam batch. */
+    suspend fun deleteCancelledSignals(): Result<Int> = runCatching {
+        val snapshot = collection
+            .whereEqualTo("status", SignalStatus.CANCELLED.name)
+            .get()
+            .await()
+
+        if (snapshot.isEmpty) return@runCatching 0
+
+        // Firestore batch maksimal 500 operasi. Pecah menjadi beberapa batch agar aman.
+        var deleted = 0
+        snapshot.documents.chunked(500).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { batch.delete(it.reference) }
+            batch.commit().await()
+            deleted += chunk.size
+        }
+        deleted
+    }
 }

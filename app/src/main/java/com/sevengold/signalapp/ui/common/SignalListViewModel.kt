@@ -46,6 +46,28 @@ class SignalListViewModel(
         }
     }
 
+
+    fun deleteSignal(signal: Signal, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repo.deleteSignal(signal.id)
+            onDone(
+                result.isSuccess,
+                result.exceptionOrNull()?.message
+            )
+        }
+    }
+
+    fun deleteCancelledSignals(onDone: (Boolean, Int, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repo.deleteCancelledSignals()
+            if (result.isSuccess) {
+                onDone(true, result.getOrDefault(0), null)
+            } else {
+                onDone(false, 0, result.exceptionOrNull()?.message)
+            }
+        }
+    }
+
     fun updateStatus(signal: Signal, status: SignalStatus, onDone: ((Boolean, String?) -> Unit)? = null) {
         viewModelScope.launch {
             val result = repo.updateStatus(signal.id, status)
