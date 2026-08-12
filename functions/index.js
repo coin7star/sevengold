@@ -28,6 +28,108 @@ function signalBody(data) {
   return `${type} ${pair} @ ${entry} | TP: ${tp} | SL: ${sl}`;
 }
 
+function telegramEventEnabled(user, eventName) {
+  const events = Array.isArray(user?.telegramNotificationEvents)
+    ? user.telegramNotificationEvents.map((v) => String(v))
+    : ["SIGNAL_CREATED", "TP_HIT", "SL_HIT", "BE", "CANCELLED"];
+  return events.includes(eventName);
+}
+
+function telegramSignalMessage(data, eventName) {
+  const type = typeLabel(data?.type);
+  const pair = data?.pair || "XAUUSD";
+  const entry = data?.entry ?? "-";
+  const tp = data?.tp ?? "-";
+  const sl = data?.sl ?? "-";
+  const note = data?.note ? `\n📝 ${data.note}` : "";
+
+  const headers = {
+    SIGNAL_CREATED: "📢 SIGNAL BARU",
+    SIGNAL_ACTIVE: "📢 SIGNAL AKTIF",
+    TP_HIT: "🎯 TP HIT — PROFIT",
+    SL_HIT: "🛑 SL HIT",
+    BE: "⚖️ BREAK EVEN",
+    CANCELLED: "❌ SIGNAL DIBATALKAN",
+  };
+
+  return `${headers[eventName] || "📡 SIGNAL UPDATE"}
+
+${type === "BUY" ? "🟢" : "🔴"} ${pair}
+📈 ${type}
+
+Entry: ${entry}
+TP: ${tp}
+SL: ${sl}${note}
+
+⚡ SevenGold Premium`;
+}
+
+async function sendTelegramSignalNotifications(data, eventName) {
+  const botToken = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
+  if (!botToken) {
+    console.warn("[TelegramPush] TELEGRAM_BOT_TOKEN is not configured; skipping Telegram notification.");
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+
+  const db = getFirestore();
+  const now = Date.now();
+  const snapshot = await db.collection("users")
+    .where("role", "==", "PREMIUM")
+    .get();
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+  const message = telegramSignalMessage(data, eventName);
+
+  const jobs = [];
+  snapshot.forEach((doc) => {
+    const user = doc.data() || {};
+    const expiry = Number(user.premiumExpiryMillis || 0);
+    const chatId = String(user.telegramChatId || "").trim();
+
+    if (!chatId || (expiry > 0 && expiry <= now) || !telegramEventEnabled(user, eventName)) {
+      skipped++;
+      return;
+    }
+
+    jobs.push((async () => {
+      try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: message,
+            disable_web_page_preview: true,
+          }),
+        });
+        if (!response.ok) {
+          failed++;
+          console.error(`[TelegramPush] ${eventName} failed for user ${doc.id}: HTTP ${response.status}`);
+          return;
+        }
+        const result = await response.json().catch(() => null);
+        if (!result?.ok) {
+          failed++;
+          console.error(`[TelegramPush] ${eventName} failed for user ${doc.id}: Telegram API error`);
+          return;
+        }
+        sent++;
+      } catch (error) {
+        failed++;
+        console.error(`[TelegramPush] ${eventName} exception for user ${doc.id}:`, error?.message);
+      }
+    })());
+  });
+
+  // Send concurrently so a large premium list does not delay the Firestore trigger unnecessarily.
+  await Promise.all(jobs);
+  console.log(`[TelegramPush] ${eventName}: sent=${sent}, skipped=${skipped}, failed=${failed}`);
+  return { sent, failed, skipped };
+}
+
+
 async function sendPremiumNotification(title, body, eventName) {
   try {
     const response = await getMessaging().send({
@@ -62,11 +164,14 @@ exports.onSignalCreated = onDocumentCreated("signals/{signalId}", async (event) 
   const data = event.data?.data();
   if (!data) return;
 
-  await sendPremiumNotification(
-    "📢 Sinyal Baru XAUUSD",
-    signalBody(data),
-    "SIGNAL_CREATED"
-  );
+  await Promise.allSettled([
+    sendPremiumNotification(
+      "📢 Sinyal Baru XAUUSD",
+      signalBody(data),
+      "SIGNAL_CREATED"
+    ),
+    sendTelegramSignalNotifications(data, "SIGNAL_CREATED"),
+  ]);
 });
 
 /**
@@ -84,11 +189,14 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
   if (beforeStatus === afterStatus) return;
 
   if (afterStatus === "ACTIVE") {
-    await sendPremiumNotification(
-      "📢 Sinyal Aktif XAUUSD",
-      signalBody(after),
-      "SIGNAL_ACTIVE"
-    );
+    await Promise.allSettled([
+      sendPremiumNotification(
+        "📢 Sinyal Aktif XAUUSD",
+        signalBody(after),
+        "SIGNAL_ACTIVE"
+      ),
+      sendTelegramSignalNotifications(after, "SIGNAL_ACTIVE"),
+    ]);
     return;
   }
 
@@ -101,7 +209,10 @@ exports.onSignalUpdated = onDocumentUpdated("signals/{signalId}", async (event) 
   const title = titles[afterStatus];
   if (!title) return;
 
-  await sendPremiumNotification(title, signalBody(after), afterStatus);
+  await Promise.allSettled([
+    sendPremiumNotification(title, signalBody(after), afterStatus),
+    sendTelegramSignalNotifications(after, afterStatus),
+  ]);
 });
 
 /** Referral reward. */

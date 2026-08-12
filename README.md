@@ -1265,3 +1265,36 @@ Buka **Admin Panel → Telegram Control**:
 4. Broadcast meminta konfirmasi sebelum dikirim dan dibatasi minimal 30 detik per admin.
 
 Test signal tidak menjalankan atau mengubah data trading.
+
+
+## V24.8.2 — Realtime Telegram Signal Notifications
+
+Telegram notifications now mirror Premium in-app signal events in near real time.
+
+Events:
+- `SIGNAL_CREATED` — new signal published
+- `SIGNAL_ACTIVE` — signal activated
+- `TP_HIT` — take-profit reached
+- `SL_HIT` — stop-loss reached
+- `BE` — break-even
+- `CANCELLED` — signal cancelled
+
+A Telegram notification is sent only when:
+1. the user has an active `PREMIUM` role,
+2. `telegramChatId` is connected,
+3. the event is enabled in `telegramNotificationEvents`.
+
+The existing FCM notification flow is preserved and runs alongside Telegram.
+
+### Cloud Functions configuration
+
+Set `TELEGRAM_BOT_TOKEN` as a Firebase/Cloud Functions secret or environment variable. Never commit the token to Git.
+
+The Cloud Function reads Premium users from Firestore and sends Telegram notifications through the Bot API. Failed Telegram deliveries do not prevent FCM delivery or other users from receiving notifications.
+
+### Telegram message flow
+
+`Firestore signal event -> Cloud Function -> FCM + Telegram`
+
+Telegram connection remains managed by the Cloudflare Worker webhook:
+`/telegram/webhook`.
