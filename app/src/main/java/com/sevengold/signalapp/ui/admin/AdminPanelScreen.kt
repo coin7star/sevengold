@@ -572,57 +572,135 @@ private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Kelola Sinyal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "Filter dan kelola sinyal tanpa membuat halaman terlalu panjang.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (selectedVisibleSignals.isNotEmpty()) {
-                    TextButton(
-                        onClick = { showDeleteSelectedDialog = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+        // Responsive header: action buttons move below the title on narrow screens/DPI.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val compactHeader = maxWidth < 600.dp
+
+            if (compactHeader) {
+                Column(Modifier.fillMaxWidth()) {
+                    Text(
+                        "Kelola Sinyal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Filter dan kelola sinyal tanpa membuat halaman terlalu panjang.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        contentPadding = PaddingValues(end = 4.dp)
                     ) {
-                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Hapus ${selectedVisibleSignals.size}")
-                    }
-                }
-                if (deletableVisibleSignals.isNotEmpty()) {
-                    TextButton(
-                        onClick = {
-                            val allSelected = deletableVisibleSignals.all { it.id in selectedSignalIds }
-                            selectedSignalIds = if (allSelected) {
-                                selectedSignalIds - deletableVisibleSignals.map { it.id }.toSet()
-                            } else {
-                                selectedSignalIds + deletableVisibleSignals.map { it.id }
+                        if (selectedVisibleSignals.isNotEmpty()) {
+                            item {
+                                TextButton(
+                                    onClick = { showDeleteSelectedDialog = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                                ) {
+                                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Hapus ${selectedVisibleSignals.size}")
+                                }
                             }
                         }
-                    ) {
-                        Text(if (deletableVisibleSignals.all { it.id in selectedSignalIds }) "Batal ceklis" else "Ceklis semua")
+                        if (deletableVisibleSignals.isNotEmpty()) {
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        val allSelected = deletableVisibleSignals.all { it.id in selectedSignalIds }
+                                        selectedSignalIds = if (allSelected) {
+                                            selectedSignalIds - deletableVisibleSignals.map { it.id }.toSet()
+                                        } else {
+                                            selectedSignalIds + deletableVisibleSignals.map { it.id }.toSet()
+                                        }
+                                    }
+                                ) {
+                                    Text(if (deletableVisibleSignals.all { it.id in selectedSignalIds }) "Batal ceklis" else "Ceklis semua")
+                                }
+                            }
+                        }
+                        if (cancelledCount > 0) {
+                            item {
+                                TextButton(
+                                    onClick = { showClearCancelledDialog = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                                ) {
+                                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Bersihkan Batal")
+                                }
+                            }
+                        }
+                        if (filteredSignals.size > 8) {
+                            item {
+                                TextButton(onClick = { showAll = !showAll }) {
+                                    Text(if (showAll) "Ringkas" else "Lihat semua")
+                                }
+                            }
+                        }
                     }
                 }
-                if (cancelledCount > 0) {
-                    TextButton(
-                        onClick = { showClearCancelledDialog = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
-                    ) {
-                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Bersihkan Batal")
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Kelola Sinyal",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Filter dan kelola sinyal tanpa membuat halaman terlalu panjang.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }
-                if (filteredSignals.size > 8) {
-                    TextButton(onClick = { showAll = !showAll }) {
-                        Text(if (showAll) "Ringkas" else "Lihat semua")
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (selectedVisibleSignals.isNotEmpty()) {
+                            TextButton(
+                                onClick = { showDeleteSelectedDialog = true },
+                                colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                            ) {
+                                Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Hapus ${selectedVisibleSignals.size}")
+                            }
+                        }
+                        if (deletableVisibleSignals.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    val allSelected = deletableVisibleSignals.all { it.id in selectedSignalIds }
+                                    selectedSignalIds = if (allSelected) {
+                                        selectedSignalIds - deletableVisibleSignals.map { it.id }.toSet()
+                                    } else {
+                                        selectedSignalIds + deletableVisibleSignals.map { it.id }.toSet()
+                                    }
+                                }
+                            ) {
+                                Text(if (deletableVisibleSignals.all { it.id in selectedSignalIds }) "Batal ceklis" else "Ceklis semua")
+                            }
+                        }
+                        if (cancelledCount > 0) {
+                            TextButton(
+                                onClick = { showClearCancelledDialog = true },
+                                colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                            ) {
+                                Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Bersihkan Batal")
+                            }
+                        }
+                        if (filteredSignals.size > 8) {
+                            TextButton(onClick = { showAll = !showAll }) {
+                                Text(if (showAll) "Ringkas" else "Lihat semua")
+                            }
+                        }
                     }
                 }
             }
