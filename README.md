@@ -1066,3 +1066,6 @@ SHA-256: E1:25:9C:00:3A:F2:D7:D5:0F:2F:2E:3E:2A:ED:27:77:72:96:A0:22:70:24:04:11
 - Google Sign-In errors now expose the Google status code instead of always showing a generic cancellation message.
 - In Firebase Console, add the SHA-1 printed by GitHub Actions under Android app settings, then download the updated `google-services.json` and update the `GOOGLE_SERVICES_JSON_BASE64` GitHub secret.
 - This change is for debug APK authentication only; never use the debug keystore as a production release signing key.
+## V24.7.1 — Build fix
+
+Restored the missing `ensureReferralData` and `ensureUserProfile` helpers in `AuthRepository`. Google login now creates/repairs a minimal Firestore profile without overwriting existing role, premium, referral, or voucher data.

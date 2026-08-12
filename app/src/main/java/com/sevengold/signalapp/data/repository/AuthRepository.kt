@@ -141,4 +141,123 @@ class AuthRepository(
     }
 
 
+    /**
+     * Ensures an authenticated user's Firestore profile contains the referral
+     * fields expected by the current app version. Existing role/premium data
+     * is preserved.
+     */
+    private suspend fun ensureReferralData(uid: String, email: String) {
+        val ref = db.collection("users").document(uid)
+        val snap = ref.get().await()
+
+        if (!snap.exists()) {
+            val referralCode = "SG${uid.take(8).uppercase()}"
+            val user = AppUser(
+                uid = uid,
+                email = email,
+                role = Role.USER,
+                referralCode = referralCode
+            )
+            db.runBatch { batch ->
+                batch.set(ref, user.toMap())
+                batch.set(
+                    db.collection("referralCodes").document(referralCode),
+                    mapOf(
+                        "uid" to uid,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                )
+            }.await()
+            return
+        }
+
+        val data = snap.data ?: emptyMap()
+        val updates = mutableMapOf<String, Any>()
+        if (data["email"] !is String || (data["email"] as String).isBlank()) {
+            updates["email"] = email
+        }
+
+        val existingReferralCode = data["referralCode"] as? String ?: ""
+        if (existingReferralCode.isBlank()) {
+            val referralCode = "SG${uid.take(8).uppercase()}"
+            updates["referralCode"] = referralCode
+            db.collection("referralCodes")
+                .document(referralCode)
+                .set(
+                    mapOf(
+                        "uid" to uid,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+        }
+
+        if (updates.isNotEmpty()) {
+            ref.update(updates).await()
+        }
+    }
+
+    /**
+     * Ensures a Google-authenticated user has a Firestore profile without
+     * overwriting an existing role, premium expiry, referral or voucher data.
+     */
+    private suspend fun ensureUserProfile(uid: String, email: String, displayName: String) {
+        val ref = db.collection("users").document(uid)
+        val snap = ref.get().await()
+
+        if (!snap.exists()) {
+            val referralCode = "SG${uid.take(8).uppercase()}"
+            val user = AppUser(
+                uid = uid,
+                email = email,
+                role = Role.USER,
+                referralCode = referralCode
+            )
+            db.runBatch { batch ->
+                batch.set(ref, user.toMap())
+                batch.set(
+                    db.collection("referralCodes").document(referralCode),
+                    mapOf(
+                        "uid" to uid,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                )
+            }.await()
+            return
+        }
+
+        val data = snap.data ?: emptyMap()
+        val updates = mutableMapOf<String, Any>()
+
+        if ((data["email"] as? String).isNullOrBlank() && email.isNotBlank()) {
+            updates["email"] = email
+        }
+
+        // Keep this field only when the project already uses it; it is useful
+        // for displaying a friendly profile name but never changes role/entitlement.
+        if (displayName.isNotBlank() && (data["displayName"] as? String).isNullOrBlank()) {
+            updates["displayName"] = displayName
+        }
+
+        if ((data["referralCode"] as? String).isNullOrBlank()) {
+            val referralCode = "SG${uid.take(8).uppercase()}"
+            updates["referralCode"] = referralCode
+            db.collection("referralCodes")
+                .document(referralCode)
+                .set(
+                    mapOf(
+                        "uid" to uid,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+        }
+
+        if (updates.isNotEmpty()) {
+            ref.update(updates).await()
+        }
+    }
+
+
+
 }
