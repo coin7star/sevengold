@@ -1629,13 +1629,17 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
     }
 
     var selectedRoleFilter by remember { mutableStateOf<com.sevengold.signalapp.data.model.Role?>(null) }
+    var telegramFilter by remember { mutableStateOf<Boolean?>(null) }
     var userSearchQuery by remember { mutableStateOf("") }
 
-    val filteredUsers = remember(users, selectedRoleFilter, userSearchQuery) {
+    val filteredUsers = remember(users, selectedRoleFilter, telegramFilter, userSearchQuery) {
         val query = userSearchQuery.trim()
         users
             .let { list ->
                 selectedRoleFilter?.let { role -> list.filter { it.effectiveRole == role } } ?: list
+            }
+            .let { list ->
+                telegramFilter?.let { connected -> list.filter { it.telegramConnected == connected } } ?: list
             }
             .filter { u ->
                 query.isBlank() ||
@@ -1690,6 +1694,40 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
+                "Filter Telegram",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 16.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = telegramFilter == null,
+                        onClick = { telegramFilter = null },
+                        label = { Text("Semua Telegram") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = telegramFilter == true,
+                        onClick = { telegramFilter = true },
+                        label = { Text("🟢 Terhubung (${users.count { it.telegramConnected }})") }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = telegramFilter == false,
+                        onClick = { telegramFilter = false },
+                        label = { Text("⚪ Belum Terhubung (${users.count { !it.telegramConnected }})") }
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
                 "Filter Peran",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1729,6 +1767,17 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
                     )
                 }
             }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AdminUserStatCard("Total", users.size.toString(), Modifier.weight(1f))
+            AdminUserStatCard("Premium", users.count { it.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM }.toString(), Modifier.weight(1f))
+            AdminUserStatCard("Telegram", users.count { it.telegramConnected }.toString(), Modifier.weight(1f))
         }
 
         LazyColumn(
@@ -1782,6 +1831,16 @@ private fun ManageUsersTab(vm: UserManagementViewModel = viewModel()) {
 }
 
 @Composable
+private fun AdminUserStatCard(title: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(Modifier.padding(10.dp)) {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
 private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserManagementViewModel) {
     var showPremiumInput by remember { mutableStateOf(false) }
     var days by remember { mutableStateOf("30") }
@@ -1807,6 +1866,40 @@ private fun UserRow(user: com.sevengold.signalapp.data.model.AppUser, vm: UserMa
                 }
                 Spacer(Modifier.width(8.dp))
                 RoleBadge(user.effectiveRole)
+            }
+            Spacer(Modifier.height(6.dp))
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (user.telegramConnected)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (user.telegramConnected) "🟢 Telegram Terhubung" else "⚪ Telegram Belum Terhubung",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (user.telegramConnected && !user.telegramUsername.isNullOrBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "@${user.telegramUsername!!.removePrefix("@")}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            if (user.telegramConnectedAt != null) {
+                Text(
+                    "Terhubung: ${df.format(java.util.Date(user.telegramConnectedAt!!))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             if (user.role == com.sevengold.signalapp.data.model.Role.PREMIUM) {
                 val expiryText = user.premiumExpiryMillis?.let { df.format(java.util.Date(it)) } ?: "-"

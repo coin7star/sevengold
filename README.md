@@ -1,3 +1,11 @@
+
+## V24.8.3 — Admin User Telegram Visibility
+
+- Added Telegram connection status badges to the Admin > Users panel.
+- Added Telegram username and connection date when available.
+- Added Telegram Connected / Not Connected filters.
+- Added compact Total / Premium / Telegram-connected statistics.
+- Existing Telegram connection data remains sourced from the user's Firestore profile; no bot token or private secret is exposed.
 # Signal App — XAUUSD (ADMIN / PREMIUM / USER) #
 
 Aplikasi Android sederhana untuk distribusi sinyal trading XAUUSD dengan 3 role:
