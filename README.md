@@ -1034,3 +1034,26 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 ## V25.4
 - Fix compile error in Admin user role filter by adding the missing Jetpack Compose `LazyRow` import.
 - No feature or business-logic changes.
+
+## V25.5 — Perbaikan Login Google & Keystore Debug Permanen
+
+**Masalah:** login dengan Google gagal dengan pesan "Tidak ada akun Google yang dapat digunakan", walau akun Google ada di HP dan konfigurasi Firebase (package name, SHA-1) sudah benar.
+
+**Root cause yang ditemukan:** workflow GitHub Actions (`.github/workflows/build-apk.yml`) selalu membuat `debug.keystore` baru secara acak di setiap run, karena runner GitHub Actions selalu berupa mesin bersih (tidak menyimpan file dari run sebelumnya). Akibatnya SHA-1 certificate fingerprint berubah di setiap build, sehingga APK hasil build terbaru tidak pernah cocok dengan SHA-1 yang sempat didaftarkan di Firebase Console.
+
+**Perbaikan:**
+- `AuthRepository.kt` — error dari Credential Manager (`GetCredentialException`) tidak lagi ditelan jadi pesan generik; sekarang pesan error asli & detail exception dicatat ke Logcat dan ditampilkan, supaya penyebab sebenarnya kelihatan.
+- Ditambahkan **jalur cadangan Google Sign-In "klasik"** (`play-services-auth` / `GoogleSignInClient`) yang otomatis dipakai kalau Credential Manager gagal — untuk jaga-jaga di device/ROM yang kurang kompatibel dengan Credential Manager API.
+- `.github/workflows/build-apk.yml` — debug keystore sekarang **permanen**, diambil dari GitHub secret `DEBUG_KEYSTORE_BASE64`, bukan dibuat ulang secara acak setiap build. Ini memastikan SHA-1/SHA-256 APK **tidak pernah berubah lagi** antar build.
+
+**SHA-1 & SHA-256 permanen (debug), wajib terdaftar di Firebase Console → Project Settings → SHA certificate fingerprints:**
+
+```text
+SHA-1:   25:2A:56:55:A2:51:BA:38:8A:B9:5E:ED:62:82:A5:0D:AA:C1:C2:C0
+SHA-256: E1:25:9C:00:3A:F2:D7:D5:0F:2F:2E:3E:2A:ED:27:77:72:96:A0:22:70:24:04:11:A2:A1:B7:45:81:40:3D:8E
+```
+
+**Setup wajib (sekali saja):**
+1. Tambah GitHub repository secret `DEBUG_KEYSTORE_BASE64` (isinya base64 dari keystore debug permanen).
+2. Tambahkan SHA-1 & SHA-256 di atas ke Firebase Console untuk app Android `com.sevengold.signalapp`.
+3. Setelah itu, setiap build dari GitHub Actions akan selalu memakai keystore yang sama, jadi SHA-1/SHA-256 tidak perlu diupdate lagi ke Firebase di masa depan.

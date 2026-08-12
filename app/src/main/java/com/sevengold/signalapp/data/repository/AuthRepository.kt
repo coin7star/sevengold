@@ -1,12 +1,15 @@
 package com.sevengold.signalapp.data.repository
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -90,19 +93,15 @@ class AuthRepository(
     }
 
     /**
-     * Login/daftar menggunakan akun Google melalui Credential Manager.
-     * Akun Google baru otomatis dibuatkan profil USER + referral code.
+     * Login/daftar menggunakan akun Google melalui Credential Manager (metode modern).
+     * Di sebagian HP/ROM (terutama beberapa unit Xiaomi/MIUI), Credential Manager API
+     * ini bisa gagal total walau akun Google ada & konfigurasi Firebase benar. Kalau ini
+     * terjadi, gunakan buildLegacyGoogleSignInIntent() + signInWithGoogleIdToken() sebagai
+     * jalur cadangan (lihat AuthViewModel & LoginScreen).
      */
     suspend fun loginWithGoogle(context: Context): Result<String> = runCatching {
         val credentialManager = CredentialManager.create(context)
-        val clientId = context.resources.getIdentifier(
-            "default_web_client_id",
-            "string",
-            context.packageName
-        ).takeIf { it != 0 }?.let { context.getString(it).trim() }.orEmpty()
-        if (clientId.isBlank() || clientId.contains("YOUR_WEB_CLIENT_ID")) {
-            error("Google Login belum dikonfigurasi. Isi Web Client ID di Firebase dan update google-services.json.")
-        }
+        val clientId = resolveWebClientId(context)
 
         val googleCredential = getGoogleCredential(
             credentialManager = credentialManager,
@@ -114,7 +113,7 @@ class AuthRepository(
             context = context,
             serverClientId = clientId,
             filterAuthorizedAccounts = false
-        ) ?: error("Tidak ada akun Google yang dapat digunakan")
+        ) ?: error("Tidak ada akun Google yang dapat digunakan lewat Credential Manager")
 
         val googleIdTokenCredential = try {
             GoogleIdTokenCredential.createFrom(googleCredential.data)
@@ -122,7 +121,46 @@ class AuthRepository(
             throw IllegalStateException("Token Google tidak valid", e)
         }
 
-        val firebaseCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+        completeFirebaseSignIn(googleIdTokenCredential.idToken)
+    }
+
+    /**
+     * Jalur cadangan (metode Google Sign-In "klasik" / play-services-auth) untuk device
+     * yang tidak kompatibel dengan Credential Manager. UI memanggil buildLegacyGoogleSignInIntent()
+     * untuk membuka layar pilih akun Google bawaan Android, lalu meneruskan idToken hasilnya ke
+     * fungsi ini.
+     */
+    suspend fun signInWithGoogleIdToken(idToken: String): Result<String> = runCatching {
+        completeFirebaseSignIn(idToken)
+    }
+
+    /** Membuat Intent untuk membuka layar pilih akun Google versi klasik (non-Credential Manager). */
+    fun buildLegacyGoogleSignInIntent(context: Context): Intent {
+        val webClientId = resolveWebClientId(context)
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(webClientId)
+            .requestEmail()
+            .build()
+        // Selalu minta pilih akun dari awal (bukan auto pakai akun terakhir), supaya user
+        // punya kesempatan ganti akun kalau diperlukan.
+        GoogleSignIn.getClient(context, gso).signOut()
+        return GoogleSignIn.getClient(context, gso).signInIntent
+    }
+
+    private fun resolveWebClientId(context: Context): String {
+        val clientId = context.resources.getIdentifier(
+            "default_web_client_id",
+            "string",
+            context.packageName
+        ).takeIf { it != 0 }?.let { context.getString(it).trim() }.orEmpty()
+        if (clientId.isBlank() || clientId.contains("YOUR_WEB_CLIENT_ID")) {
+            error("Google Login belum dikonfigurasi. Isi Web Client ID di Firebase dan update google-services.json.")
+        }
+        return clientId
+    }
+
+    private suspend fun completeFirebaseSignIn(idToken: String): String {
+        val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
         val authResult = try {
             auth.signInWithCredential(firebaseCredential).await()
         } catch (e: FirebaseAuthUserCollisionException) {
@@ -131,7 +169,7 @@ class AuthRepository(
 
         val firebaseUser = authResult.user ?: error("Gagal login dengan Google")
         ensureUserProfile(firebaseUser.uid, firebaseUser.email.orEmpty(), firebaseUser.displayName.orEmpty())
-        firebaseUser.uid
+        return firebaseUser.uid
     }
 
     private suspend fun getGoogleCredential(

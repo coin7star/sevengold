@@ -13,7 +13,10 @@ data class AuthUiState(
     val error: String? = null,
     val success: Boolean = false,
     val welcomeVoucherCode: String? = null,
-    val welcomeVoucherPercent: Int = 0
+    val welcomeVoucherPercent: Int = 0,
+    // true = Credential Manager gagal (biasanya masalah device/ROM), minta UI buka
+    // layar pilih akun Google versi klasik sebagai jalur cadangan.
+    val launchLegacyGoogleSignIn: Boolean = false
 )
 
 class AuthViewModel(
@@ -44,9 +47,38 @@ class AuthViewModel(
             val result = repo.loginWithGoogle(context)
             _state.value = result.fold(
                 onSuccess = { AuthUiState(success = true) },
+                onFailure = {
+                    // Credential Manager gagal (paling sering: masalah kompatibilitas
+                    // device/ROM, bukan konfigurasi). Minta UI coba jalur klasik dulu
+                    // sebelum menampilkan pesan error ke user.
+                    AuthUiState(loading = false, launchLegacyGoogleSignIn = true)
+                }
+            )
+        }
+    }
+
+    /** Dipanggil UI untuk mengambil Intent layar pilih akun Google versi klasik. */
+    fun buildLegacyGoogleSignInIntent(context: Context) = repo.buildLegacyGoogleSignInIntent(context)
+
+    /** Dipanggil UI setelah user selesai memilih akun di layar Google klasik. */
+    fun onLegacyGoogleSignInResult(idToken: String?) {
+        if (idToken.isNullOrBlank()) {
+            _state.value = AuthUiState(error = "Login dengan Google dibatalkan atau gagal")
+            return
+        }
+        _state.value = AuthUiState(loading = true)
+        viewModelScope.launch {
+            val result = repo.signInWithGoogleIdToken(idToken)
+            _state.value = result.fold(
+                onSuccess = { AuthUiState(success = true) },
                 onFailure = { AuthUiState(error = it.message ?: "Gagal masuk dengan Google") }
             )
         }
+    }
+
+    /** UI memanggil ini setelah selesai menindaklanjuti launchLegacyGoogleSignIn, supaya tidak dobel-trigger. */
+    fun consumeLegacyGoogleSignInRequest() {
+        _state.value = _state.value.copy(launchLegacyGoogleSignIn = false)
     }
 
     fun register(email: String, password: String, confirmPassword: String, referralCode: String = "") {

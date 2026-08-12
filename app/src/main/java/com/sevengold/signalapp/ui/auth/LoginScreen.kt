@@ -2,6 +2,9 @@
 
 package com.sevengold.signalapp.ui.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.sevengold.signalapp.ui.theme.SignalGradients
 
 @Composable
@@ -44,6 +49,35 @@ fun LoginScreen(
 
     LaunchedEffect(state.success) {
         if (state.success) onLoginSuccess()
+    }
+
+    // Launcher untuk layar pilih akun Google versi klasik (fallback saat Credential
+    // Manager gagal, misal di sebagian HP Xiaomi/MIUI).
+    val legacyGoogleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                viewModel.onLegacyGoogleSignInResult(account.idToken)
+            } catch (e: ApiException) {
+                viewModel.onLegacyGoogleSignInResult(null)
+            }
+        } else {
+            viewModel.onLegacyGoogleSignInResult(null)
+        }
+    }
+
+    LaunchedEffect(state.launchLegacyGoogleSignIn) {
+        if (state.launchLegacyGoogleSignIn) {
+            viewModel.consumeLegacyGoogleSignInRequest()
+            runCatching {
+                legacyGoogleSignInLauncher.launch(viewModel.buildLegacyGoogleSignInIntent(context))
+            }.onFailure {
+                viewModel.onLegacyGoogleSignInResult(null)
+            }
+        }
     }
 
     Box(

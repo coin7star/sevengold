@@ -67,6 +67,10 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
+    // Fallback: Google Sign-In "klasik" untuk HP/ROM yang tidak kompatibel dengan
+    // Credential Manager (banyak terjadi di beberapa unit Xiaomi/MIUI)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
     // Coroutines <-> Firebase Task bridge
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
