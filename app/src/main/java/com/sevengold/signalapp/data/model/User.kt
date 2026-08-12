@@ -32,8 +32,19 @@ data class AppUser(
     // Voucher welcome untuk teman baru; default 10% dan dipakai manual saat berlangganan.
     val welcomeVoucherCode: String = "",
     val welcomeVoucherPercent: Int = 0,
-    val welcomeVoucherUsed: Boolean = false
+    val welcomeVoucherUsed: Boolean = false,
+    // Telegram notification connection. These fields are safe client metadata;
+    // the bot token itself never lives in the app.
+    val telegramChatId: String? = null,
+    val telegramUsername: String? = null,
+    val telegramConnectedAt: Long? = null,
+    val telegramConnectionCode: String = "",
+    val telegramConnectionExpiresAt: Long? = null,
+    val telegramNotificationEvents: List<String> = emptyList()
 ) {
+    val telegramConnected: Boolean
+        get() = !telegramChatId.isNullOrBlank()
+
     /** PREMIUM dianggap aktif hanya jika role == PREMIUM DAN belum lewat expiry. */
     val isPremiumActive: Boolean
         get() = role == Role.PREMIUM && (premiumExpiryMillis ?: 0L) > System.currentTimeMillis()
@@ -59,7 +70,13 @@ data class AppUser(
         "referralRewardDaysEarned" to referralRewardDaysEarned,
         "welcomeVoucherCode" to welcomeVoucherCode,
         "welcomeVoucherPercent" to welcomeVoucherPercent,
-        "welcomeVoucherUsed" to welcomeVoucherUsed
+        "welcomeVoucherUsed" to welcomeVoucherUsed,
+        "telegramChatId" to telegramChatId,
+        "telegramUsername" to telegramUsername,
+        "telegramConnectedAt" to telegramConnectedAt,
+        "telegramConnectionCode" to telegramConnectionCode,
+        "telegramConnectionExpiresAt" to telegramConnectionExpiresAt,
+        "telegramNotificationEvents" to telegramNotificationEvents
     )
 
     companion object {
@@ -78,7 +95,13 @@ data class AppUser(
                 referralRewardDaysEarned = (map["referralRewardDaysEarned"] as? Number)?.toInt() ?: 0,
                 welcomeVoucherCode = map["welcomeVoucherCode"] as? String ?: "",
                 welcomeVoucherPercent = (map["welcomeVoucherPercent"] as? Number)?.toInt() ?: 0,
-                welcomeVoucherUsed = map["welcomeVoucherUsed"] as? Boolean ?: false
+                welcomeVoucherUsed = map["welcomeVoucherUsed"] as? Boolean ?: false,
+                telegramChatId = map["telegramChatId"] as? String,
+                telegramUsername = map["telegramUsername"] as? String,
+                telegramConnectedAt = (map["telegramConnectedAt"] as? Number)?.toLong(),
+                telegramConnectionCode = map["telegramConnectionCode"] as? String ?: "",
+                telegramConnectionExpiresAt = (map["telegramConnectionExpiresAt"] as? Number)?.toLong(),
+                telegramNotificationEvents = (map["telegramNotificationEvents"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
             )
         }
     }

@@ -1069,3 +1069,117 @@ SHA-256: E1:25:9C:00:3A:F2:D7:D5:0F:2F:2E:3E:2A:ED:27:77:72:96:A0:22:70:24:04:11
 ## V24.7.1 — Build fix
 
 Restored the missing `ensureReferralData` and `ensureUserProfile` helpers in `AuthRepository`. Google login now creates/repairs a minimal Firestore profile without overwriting existing role, premium, referral, or voucher data.
+
+## V24.8 — Telegram Connect + Notification
+
+Telegram ditambahkan sebagai **channel notifikasi tambahan** untuk user Premium. FCM tetap menjadi channel utama dan tidak bergantung pada Telegram.
+
+### Alur
+
+```text
+Admin publish
+   ↓
+Cloudflare Worker
+   ├── FCM → Premium App
+   └── Telegram → Premium yang sudah terhubung
+```
+
+Telegram hanya mengirim ke user yang:
+- role-nya `PREMIUM`,
+- masa Premium masih aktif,
+- sudah menghubungkan akun Telegram,
+- dan mengaktifkan event notifikasi tersebut.
+
+Jika Telegram gagal, **FCM tetap dianggap berhasil** dan publish sinyal tidak dibatalkan.
+
+### Hubungkan Telegram dari aplikasi
+
+1. Login sebagai Premium.
+2. Buka **Profil → Notifikasi Telegram**.
+3. Tekan **Buat Kode Koneksi**.
+4. Aplikasi menampilkan kode 6 karakter dan perintah:
+   `/start KODE`
+5. Buka bot Telegram SevenGold.
+6. Kirim `/start KODE`.
+7. Worker memvalidasi kode dan menghubungkan Telegram Chat ID ke Firebase UID.
+8. Aplikasi akan otomatis menampilkan status **Terhubung** melalui listener profil.
+
+Kode koneksi berlaku **10 menit** dan hanya dapat digunakan untuk satu koneksi.
+
+### Secret Cloudflare
+
+Di **Cloudflare → Workers & Pages → sevengoldapp → Settings → Variables and Secrets**, tambahkan sebagai **Secret**:
+
+```text
+FIREBASE_PROJECT_ID
+ADMIN_UIDS
+FIREBASE_SERVICE_ACCOUNT_JSON
+TELEGRAM_BOT_TOKEN
+TELEGRAM_WEBHOOK_SECRET
+```
+
+`TELEGRAM_BOT_TOKEN` adalah token dari BotFather. **Jangan masukkan token ke APK, GitHub repository, README, screenshot, atau chat.**
+
+### Set webhook Telegram
+
+Setelah `TELEGRAM_BOT_TOKEN` disimpan di Cloudflare, Telegram harus diarahkan ke endpoint Worker:
+
+```text
+https://sevengoldapp.coin7star.workers.dev/telegram/webhook
+```
+
+Gunakan Bot API `setWebhook` untuk bot tersebut. Contoh:
+
+```text
+https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://sevengoldapp.coin7star.workers.dev/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>
+```
+
+Jangan menyimpan atau commit URL yang masih mengandung token. Setelah webhook aktif, `/start KODE` dari user akan diterima oleh Worker.
+
+### Event Telegram
+
+Default event:
+
+```text
+SIGNAL_CREATED
+TP_HIT
+SL_HIT
+BE
+CANCELLED
+```
+
+User Premium dapat mengaktifkan/nonaktifkan event dari Profil. `SIGNAL_ACTIVE` tetap tersedia di backend tetapi tidak diaktifkan secara default agar tidak menghasilkan notifikasi ganda.
+
+### Security
+
+- Bot token hanya berada di Cloudflare Secret.
+- APK tidak pernah menerima bot token.
+- Kode koneksi acak dan berlaku 10 menit.
+- Worker melakukan lookup kode langsung ke Firestore menggunakan service account.
+- Telegram hanya diproses untuk user Premium aktif.
+- Admin push tetap membutuhkan Firebase ID token + UID yang terdaftar di `ADMIN_UIDS`.
+- Telegram adalah channel tambahan; kegagalan Telegram tidak menggagalkan FCM.
+
+### Cloudflare permissions
+
+Karena Worker sekarang juga membaca/memperbarui dokumen Firestore untuk koneksi Telegram dan daftar Premium, service account yang digunakan oleh Worker harus memiliki akses yang sesuai ke Firestore selain izin FCM. Jika service account adalah Firebase Admin SDK service account standar, pastikan IAM role yang diperlukan untuk Firestore tersedia pada project.
+
+### Testing
+
+1. Deploy Worker.
+2. Pastikan `TELEGRAM_BOT_TOKEN` sudah tersimpan sebagai Secret.
+3. Set webhook Telegram ke endpoint `/telegram/webhook`.
+4. Login Premium.
+5. Buat kode koneksi.
+6. Kirim `/start KODE` ke bot.
+7. Pastikan aplikasi berubah menjadi **Terhubung**.
+8. Publish sinyal dari Admin.
+9. Pastikan:
+   - FCM masuk ke aplikasi Premium.
+   - Telegram masuk ke chat Premium yang terhubung.
+10. Uji TP, SL, BE, dan Cancel.
+11. Putuskan Telegram dari Profil dan pastikan pesan Telegram tidak lagi dikirim.
+
+### Catatan skala
+
+Implementasi V24.8 menggunakan query Firestore untuk mencari Premium yang terhubung setiap kali event push terjadi. Ini sederhana dan cocok untuk tahap awal. Jika jumlah Premium sudah besar, sebaiknya dipindahkan ke koleksi subscription Telegram khusus agar pengiriman tidak perlu memindai daftar user Premium.

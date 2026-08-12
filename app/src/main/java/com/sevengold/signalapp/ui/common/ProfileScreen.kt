@@ -9,10 +9,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Role
+import com.sevengold.signalapp.data.repository.UserRepository
+import kotlinx.coroutines.launch
 import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldLight
 import com.sevengold.signalapp.ui.theme.SignalGradients
@@ -110,6 +119,11 @@ fun ProfileScreen(
         ReferralCard(user)
 
         Spacer(Modifier.height(16.dp))
+
+        if (user.effectiveRole == Role.PREMIUM) {
+            TelegramNotificationCard(user)
+            Spacer(Modifier.height(16.dp))
+        }
 
         // Penjelasan singkat per-role, supaya user awam tidak bingung fitur apa yang dia punya.
         InfoCard(accentText = true) {
@@ -203,6 +217,177 @@ private fun ReferralCodeRow(label: String, value: String, onCopy: () -> Unit) {
             Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldLight)
         }
         TextButton(onClick = onCopy) { Text("Salin") }
+    }
+}
+
+
+@Composable
+private fun TelegramNotificationCard(user: AppUser) {
+    val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
+    val repository = remember { UserRepository() }
+    var message by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var selectedEvents by remember(user.telegramNotificationEvents) {
+        mutableStateOf(
+            if (user.telegramNotificationEvents.isEmpty()) {
+                TelegramNotificationEvents.ALL.toMutableSet()
+            } else {
+                user.telegramNotificationEvents.toMutableSet()
+            }
+        )
+    }
+
+    InfoCard(accentText = true) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Send, contentDescription = null, tint = GoldLight)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("NOTIFIKASI TELEGRAM", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+                Text(
+                    if (user.telegramConnected)
+                        "Terhubung${user.telegramUsername?.takeIf { it.isNotBlank() }?.let { " • @$it" } ?: ""}"
+                    else "Belum terhubung",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        if (!user.telegramConnected) {
+            Text(
+                "Hubungkan Telegram untuk menerima notifikasi sinyal Premium melalui bot. Telegram bersifat tambahan; notifikasi aplikasi tetap berjalan seperti biasa.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+
+            if (user.telegramConnectionCode.isNotBlank() &&
+                (user.telegramConnectionExpiresAt ?: 0L) > System.currentTimeMillis()
+            ) {
+                Text("Kode koneksi", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        user.telegramConnectionCode,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldLight,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        clipboard.setText(AnnotatedString("/start ${user.telegramConnectionCode}"))
+                        message = "Perintah koneksi disalin."
+                    }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "Salin kode")
+                    }
+                }
+                Text(
+                    "Buka bot Telegram SevenGold lalu kirim: /start ${user.telegramConnectionCode}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
+            Button(
+                enabled = !busy,
+                onClick = {
+                    busy = true
+                    message = null
+                    scope.launch {
+                        repository.createTelegramConnectionCode(user.uid)
+                            .onSuccess {
+                                message = "Kode koneksi dibuat. Kirim kode tersebut ke bot Telegram."
+                            }
+                            .onFailure { message = it.message ?: "Gagal membuat kode koneksi." }
+                        busy = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.Link, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (busy) "Menyiapkan..." else "Buat Kode Koneksi")
+            }
+        } else {
+            Text(
+                "Telegram terhubung. Pilih jenis notifikasi yang ingin diterima.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+
+            TelegramNotificationEvents.ALL.forEach { event ->
+                val checked = event in selectedEvents
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = checked,
+                        onCheckedChange = {
+                            val next = selectedEvents.toMutableSet().apply {
+                                if (it) add(event) else remove(event)
+                            }
+                            selectedEvents = next
+                            scope.launch {
+                                repository.updateTelegramNotificationEvents(user.uid, next.toList())
+                            }
+                        }
+                    )
+                    Text(TelegramNotificationEvents.label(event), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                enabled = !busy,
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        repository.disconnectTelegram(user.uid)
+                            .onSuccess { message = "Telegram berhasil diputuskan." }
+                            .onFailure { message = it.message ?: "Gagal memutuskan Telegram." }
+                        busy = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Icon(Icons.Filled.LinkOff, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Putuskan Telegram")
+            }
+        }
+
+        message?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, style = MaterialTheme.typography.labelSmall, color = GoldLight)
+        }
+    }
+}
+
+private object TelegramNotificationEvents {
+    const val SIGNAL_CREATED = "SIGNAL_CREATED"
+    const val SIGNAL_ACTIVE = "SIGNAL_ACTIVE"
+    const val TP_HIT = "TP_HIT"
+    const val SL_HIT = "SL_HIT"
+    const val BE = "BE"
+    const val CANCELLED = "CANCELLED"
+
+    val ALL = listOf(SIGNAL_CREATED, TP_HIT, SL_HIT, BE, CANCELLED)
+
+    fun label(event: String): String = when (event) {
+        SIGNAL_CREATED -> "Sinyal baru diterbitkan"
+        TP_HIT -> "TP tercapai"
+        SL_HIT -> "SL tercapai"
+        BE -> "Break Even"
+        CANCELLED -> "Sinyal dibatalkan"
+        SIGNAL_ACTIVE -> "Sinyal aktif"
+        else -> event
     }
 }
 

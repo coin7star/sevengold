@@ -148,4 +148,39 @@ class UserRepository(
         ref.id
     }
 
+    suspend fun createTelegramConnectionCode(uid: String): Result<String> = runCatching {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        val random = java.security.SecureRandom()
+        val code = buildString {
+            repeat(6) { append(chars[random.nextInt(chars.length)]) }
+        }
+        val expiresAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)
+        db.collection("users").document(uid).update(
+            mapOf(
+                "telegramConnectionCode" to code,
+                "telegramConnectionExpiresAt" to expiresAt
+            )
+        ).await()
+        code
+    }
+
+    suspend fun updateTelegramNotificationEvents(uid: String, events: List<String>): Result<Unit> = runCatching {
+        db.collection("users").document(uid).update(
+            "telegramNotificationEvents", events.distinct()
+        ).await()
+    }
+
+    suspend fun disconnectTelegram(uid: String): Result<Unit> = runCatching {
+        db.collection("users").document(uid).update(
+            mapOf(
+                "telegramChatId" to com.google.firebase.firestore.FieldValue.delete(),
+                "telegramUsername" to com.google.firebase.firestore.FieldValue.delete(),
+                "telegramConnectedAt" to com.google.firebase.firestore.FieldValue.delete(),
+                "telegramConnectionCode" to com.google.firebase.firestore.FieldValue.delete(),
+                "telegramConnectionExpiresAt" to com.google.firebase.firestore.FieldValue.delete(),
+                "telegramNotificationEvents" to com.google.firebase.firestore.FieldValue.delete()
+            )
+        ).await()
+    }
+
 }

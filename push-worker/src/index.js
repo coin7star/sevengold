@@ -78,7 +78,7 @@ async function getGoogleAccessToken(env, account) {
 
   const privateKey = await importPKCS8(cleanPem(account.private_key), "RS256");
   const assertion = await new SignJWT({
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    scope: "https://www.googleapis.com/auth/cloud-platform",
   })
     .setProtectedHeader({ alg: "RS256", typ: "JWT" })
     .setIssuer(account.client_email)
@@ -121,6 +121,208 @@ function bodyFor(signal) {
   const type = String(signal.type || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
   const pair = String(signal.pair || "XAUUSD");
   return `${type} ${pair} @ ${signal.entry ?? "-"} | TP: ${signal.tp ?? "-"} | SL: ${signal.sl ?? "-"}`;
+}
+
+
+function firestoreBase(projectId) {
+  return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents`;
+}
+
+function firestoreValue(value) {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number" && Number.isInteger(value)) return { integerValue: String(value) };
+  return { stringValue: String(value) };
+}
+
+async function firestoreRunQuery(env, projectId, accessToken, whereField, whereValue) {
+  const response = await fetch(`${firestoreBase(projectId)}:runQuery`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "users" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: whereField },
+            op: "EQUAL",
+            value: firestoreValue(whereValue),
+          },
+        },
+        limit: 200,
+      },
+    }),
+  });
+  if (!response.ok) throw new Error(`Firestore query failed: HTTP ${response.status}`);
+  return await response.json();
+}
+
+async function updateUserTelegram(env, projectId, accessToken, uid, fields) {
+  const updateMask = Object.keys(fields).map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`).join("&");
+  const response = await fetch(
+    `${firestoreBase(projectId)}/users/${encodeURIComponent(uid)}?${updateMask}`,
+    {
+      method: "PATCH",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        name: `${firestoreBase(projectId)}/users/${uid}`,
+        fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, firestoreValue(v)])),
+      }),
+    }
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Firestore update failed: HTTP ${response.status} ${body.slice(0, 180)}`);
+  }
+}
+
+function fromFirestoreValue(value) {
+  if (!value) return null;
+  if ("stringValue" in value) return value.stringValue;
+  if ("integerValue" in value) return Number(value.integerValue);
+  if ("booleanValue" in value) return value.booleanValue;
+  if ("arrayValue" in value) return (value.arrayValue.values || []).map(fromFirestoreValue);
+  return null;
+}
+
+function fromFirestoreDoc(doc) {
+  const fields = doc?.fields || {};
+  return Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, fromFirestoreValue(v)]));
+}
+
+async function findTelegramConnection(env, projectId, accessToken, code) {
+  const rows = await firestoreRunQuery(env, projectId, accessToken, "telegramConnectionCode", code);
+  const doc = rows.find((row) => row.document)?.document;
+  if (!doc) return null;
+  return { uid: doc.name.split("/").pop(), data: fromFirestoreDoc(doc) };
+}
+
+async function sendTelegram(env, chatId, title, body) {
+  const botToken = String(env.TELEGRAM_BOT_TOKEN || "").trim();
+  if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
+
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: `${title}\n\n${body}\n\n— SevenGold`,
+      disable_web_page_preview: true,
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.ok) {
+    throw new Error(`Telegram send failed: HTTP ${response.status}`);
+  }
+  return result;
+}
+
+function telegramBodyFor(signal, event) {
+  const type = String(signal.type || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
+  const pair = String(signal.pair || "XAUUSD");
+  const lines = [
+    `${type} ${pair}`,
+    `Entry: ${signal.entry ?? "-"}`,
+    `TP: ${signal.tp ?? "-"}`,
+    `SL: ${signal.sl ?? "-"}`,
+  ];
+  if (event === "TP_HIT") lines.unshift("🎯 TAKE PROFIT TERCAPAI");
+  else if (event === "SL_HIT") lines.unshift("🛑 STOP LOSS TERCAPAI");
+  else if (event === "BE") lines.unshift("⚖️ BREAK EVEN");
+  else if (event === "CANCELLED") lines.unshift("❌ SINYAL DIBATALKAN");
+  else lines.unshift("📢 SINYAL BARU");
+  return lines.join("\n");
+}
+
+async function sendTelegramToPremium(env, projectId, accessToken, signal, event) {
+  const rows = await firestoreRunQuery(env, projectId, accessToken, "role", "PREMIUM");
+  const now = Date.now();
+  const title = titleFor(event);
+  const body = telegramBodyFor(signal, event);
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    const data = fromFirestoreDoc(row.document);
+    const chatId = String(data.telegramChatId || "").trim();
+    const expiry = Number(data.premiumExpiryMillis || 0);
+    if (!chatId || expiry <= now) {
+      skipped++;
+      continue;
+    }
+    const preferences = Array.isArray(data.telegramNotificationEvents) ? data.telegramNotificationEvents : [];
+    if (preferences.length && !preferences.includes(event)) {
+      skipped++;
+      continue;
+    }
+    try {
+      await sendTelegram(env, chatId, title, body);
+      sent++;
+    } catch (error) {
+      failed++;
+      console.error("Telegram send failed", JSON.stringify({ uid: row.document?.name, error: error?.message }));
+    }
+  }
+  return { sent, skipped, failed };
+}
+
+async function handleTelegramWebhook(request, env) {
+  const projectId = String(env.FIREBASE_PROJECT_ID || "").trim();
+  if (!projectId) return json({ ok: false, error: "FIREBASE_PROJECT_ID is not configured" }, 500);
+  const botToken = String(env.TELEGRAM_BOT_TOKEN || "").trim();
+  if (!botToken) return json({ ok: false, error: "TELEGRAM_BOT_TOKEN is not configured" }, 500);
+
+  const webhookSecret = String(env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  if (webhookSecret) {
+    const receivedSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token") || "";
+    if (receivedSecret !== webhookSecret) {
+      return json({ ok: false, error: "Invalid Telegram webhook secret" }, 401);
+    }
+  }
+
+  const update = await request.json();
+  const message = update?.message;
+  const chatId = message?.chat?.id;
+  const username = message?.from?.username || "";
+  const text = String(message?.text || "").trim();
+  if (!chatId || !text.startsWith("/start")) return json({ ok: true, ignored: true });
+
+  const code = text.split(/\s+/)[1]?.trim().toUpperCase() || "";
+  if (!code) {
+    await sendTelegram(env, chatId, "🔗 Hubungkan SevenGold", "Kirim /start KODE yang tampil di aplikasi SevenGold.");
+    return json({ ok: true });
+  }
+
+  const accessToken = await getGoogleAccessToken(env, getServiceAccount(env));
+  const connection = await findTelegramConnection(env, projectId, accessToken, code);
+  if (!connection) {
+    await sendTelegram(env, chatId, "❌ Kode tidak valid", "Kode koneksi tidak ditemukan atau sudah kedaluwarsa. Buat kode baru dari Profil Premium.");
+    return json({ ok: true });
+  }
+
+  const expiresAt = Number(connection.data.telegramConnectionExpiresAt || 0);
+  if (!expiresAt || expiresAt < Date.now()) {
+    await sendTelegram(env, chatId, "⌛ Kode kedaluwarsa", "Buat kode koneksi baru dari Profil Premium.");
+    return json({ ok: true });
+  }
+
+  await updateUserTelegram(env, projectId, accessToken, connection.uid, {
+    telegramChatId: String(chatId),
+    telegramUsername: String(username),
+    telegramConnectedAt: Date.now(),
+    telegramConnectionCode: "",
+    telegramConnectionExpiresAt: null,
+    telegramNotificationEvents: ["SIGNAL_CREATED", "TP_HIT", "SL_HIT", "BE", "CANCELLED"],
+  });
+
+  await sendTelegram(
+    env,
+    chatId,
+    "✅ Telegram berhasil terhubung",
+    "Notifikasi sinyal Premium SevenGold sekarang aktif. Kamu bisa mengatur jenis notifikasi dari Profil di aplikasi."
+  );
+  return json({ ok: true, connected: true });
 }
 
 async function sendFcm(env, signal, event) {
@@ -171,7 +373,17 @@ async function sendFcm(env, signal, event) {
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
     if (request.method !== "POST") return json({ ok: false, error: "POST only" }, 405);
+
+    if (url.pathname === "/telegram/webhook") {
+      try {
+        return await handleTelegramWebhook(request, env);
+      } catch (error) {
+        console.error("Telegram webhook error", error);
+        return json({ ok: false, error: error?.message || "Telegram webhook failed" }, 500);
+      }
+    }
 
     const projectId = String(env.FIREBASE_PROJECT_ID || "").trim();
     if (!projectId || projectId === "CHANGE_ME") return json({ ok: false, error: "FIREBASE_PROJECT_ID is not configured" }, 500);
@@ -191,8 +403,19 @@ export default {
 
       const signal = payload;
       const result = await sendFcm(env, signal, event);
-      console.log(JSON.stringify({ ok: true, event, uid: claims.sub, result }));
-      return json({ ok: true, event, messageId: result.name || null });
+
+      let telegram = { sent: 0, skipped: 0, failed: 0 };
+      try {
+        const account = getServiceAccount(env);
+        const accessToken = await getGoogleAccessToken(env, account);
+        telegram = await sendTelegramToPremium(env, projectId, accessToken, signal, event);
+      } catch (telegramError) {
+        // Telegram is an optional channel. Never fail FCM just because Telegram is unavailable.
+        console.error("Telegram channel error", telegramError);
+      }
+
+      console.log(JSON.stringify({ ok: true, event, uid: claims.sub, fcm: result, telegram }));
+      return json({ ok: true, event, messageId: result.name || null, telegram });
     } catch (error) {
       console.error("Premium push error", error);
       return json({ ok: false, error: error?.message || "Push failed" }, 500);
