@@ -1,9 +1,12 @@
 package com.sevengold.signalapp.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -156,8 +159,30 @@ class AuthRepository(
             } else {
                 null
             }
-        } catch (_: Exception) {
+        } catch (e: NoCredentialException) {
+            // Benar-benar tidak ada akun Google yang cocok untuk opsi ini (misal filter
+            // "hanya akun yang sudah pernah dipakai" tidak menemukan apa-apa). Ini normal
+            // saat percobaan pertama, makanya di loginWithGoogle() ada percobaan kedua.
+            Log.w(
+                "AuthRepository",
+                "Google Sign-In: tidak ada credential (filterAuthorizedAccounts=$filterAuthorizedAccounts)"
+            )
             null
+        } catch (e: GetCredentialException) {
+            // Ini BUKAN kasus "tidak ada akun" — ini error konfigurasi/jaringan/Play Services.
+            // Sebelumnya error ini ditelan (catch Exception -> null) sehingga selalu muncul
+            // pesan generik "Tidak ada akun Google yang dapat digunakan" walau akar masalahnya
+            // beda. Sekarang kita lempar pesan aslinya supaya kelihatan penyebab sebenarnya.
+            Log.e(
+                "AuthRepository",
+                "Google Sign-In gagal: ${e.javaClass.simpleName} - ${e.message}",
+                e
+            )
+            throw IllegalStateException(
+                "Google Sign-In gagal (${e.javaClass.simpleName}): ${e.message ?: "tidak ada detail"}. " +
+                    "Cek SHA-1 fingerprint & Web Client ID di Firebase Console, dan pastikan Google Play Services aktif.",
+                e
+            )
         }
     }
 
