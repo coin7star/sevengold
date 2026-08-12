@@ -4,6 +4,7 @@ package com.sevengold.signalapp.ui.premium
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -61,130 +62,159 @@ fun PremiumSignalScreen(
     val orders by subscriptionVm.orders.collectAsState()
     val subscriptionMessage by subscriptionVm.message.collectAsState()
     var tab by remember { mutableStateOf(PremiumTab.SIGNALS) }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val drawerScope = rememberCoroutineScope()
-    BackHandler(enabled = drawerState.isOpen) {
-        drawerScope.launch { drawerState.close() }
+    var drawerOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = drawerOpen) {
+        drawerOpen = false
     }
     var showPackagesSheet by remember { mutableStateOf(false) }
     LaunchedEffect(user.uid) { subscriptionVm.startListeningOrders(user.uid) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = true,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = { drawerOpen = true }) {
+                            Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
+                        }
+                    },
+                    title = {
+                        Text(
+                            if (tab == PremiumTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    actions = { TextButton(onClick = onLogout) { Text("Keluar", color = MaterialTheme.colorScheme.error) } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                )
+            },
+            bottomBar = {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    NavigationBarItem(
+                        selected = tab == PremiumTab.SIGNALS,
+                        onClick = { tab = PremiumTab.SIGNALS },
+                        icon = { Icon(Icons.Filled.ShowChart, contentDescription = null) },
+                        label = { Text("Sinyal") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = GoldPrimary,
+                            selectedTextColor = GoldPrimary,
+                            indicatorColor = Color(0x33D4AF62)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = tab == PremiumTab.PROFILE,
+                        onClick = { tab = PremiumTab.PROFILE },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                        label = { Text("Profil") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = GoldPrimary,
+                            selectedTextColor = GoldPrimary,
+                            indicatorColor = Color(0x33D4AF62)
+                        )
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Box(Modifier.fillMaxSize().padding(innerPadding)) {
+                AdaptiveAppFrame {
+                    when (tab) {
+                        PremiumTab.SIGNALS -> {
+                            val activeSignals = remember(signals) {
+                                signals.filter { it.status == SignalStatus.ACTIVE }
+                            }
+                            val historySignals = remember(signals) {
+                                signals.filter { it.status != SignalStatus.ACTIVE }
+                            }
+
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                            ) {
+                                item { ActiveSignalsSection(signals = activeSignals) }
+                                item { PremiumExpiryBanner(expiryLabel) }
+                                item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
+                                if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
+                                item { PerformanceSummaryCard(signals = signals) }
+                                item { HistorySignalsSection(signals = historySignals) }
+                            }
+                        }
+                        PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
+                    }
+                }
+            }
+        }
+
+        if (drawerOpen) {
+            // Scrim dibuat full-screen dan berada di atas seluruh konten,
+            // sehingga tap di luar drawer maupun tombol X selalu menutup drawer.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.58f))
+                    .clickable { drawerOpen = false }
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.84f)
+                    .widthIn(max = 340.dp)
+                    .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
+                    .shadow(14.dp, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 Column(Modifier.fillMaxHeight()) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Column(Modifier.weight(1f)) {
                             Text("SEVENGOLD", fontWeight = FontWeight.ExtraBold, color = GoldPrimary)
                             Text("Menu aplikasi", style = MaterialTheme.typography.labelMedium)
                         }
-                        IconButton(onClick = { drawerScope.launch { drawerState.close() } }) {
+                        IconButton(onClick = { drawerOpen = false }) {
                             Icon(Icons.Filled.Close, contentDescription = "Tutup menu")
                         }
                     }
                     NavigationDrawerItem(
                         selected = tab == PremiumTab.SIGNALS,
-                        onClick = { tab = PremiumTab.SIGNALS; drawerScope.launch { drawerState.close() } },
+                        onClick = { tab = PremiumTab.SIGNALS; drawerOpen = false },
                         icon = { Icon(Icons.Filled.ShowChart, null) },
                         label = { Text("Sinyal") },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                     NavigationDrawerItem(
                         selected = tab == PremiumTab.PROFILE,
-                        onClick = { tab = PremiumTab.PROFILE; drawerScope.launch { drawerState.close() } },
+                        onClick = { tab = PremiumTab.PROFILE; drawerOpen = false },
                         icon = { Icon(Icons.Filled.Person, null) },
                         label = { Text("Profil") },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                     Spacer(Modifier.weight(1f))
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(user.email, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                            Text(if (user.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM) "Premium" else "Pengguna", color = GoldPrimary, style = MaterialTheme.typography.labelMedium)
-                        }
-                        IconButton(onClick = onLogout) { Icon(Icons.Filled.Logout, contentDescription = "Keluar") }
-                    }
-                }
-            }
-        },
-        content = {
-        Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Buka menu")
-                    }
-                },
-                title = {
-                    Text(
-                        if (tab == PremiumTab.SIGNALS) "Sinyal XAUUSD" else "Profil",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                actions = { TextButton(onClick = onLogout) { Text("Keluar", color = MaterialTheme.colorScheme.error) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
-            )
-        },
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                NavigationBarItem(
-                    selected = tab == PremiumTab.SIGNALS,
-                    onClick = { tab = PremiumTab.SIGNALS },
-                    icon = { Icon(Icons.Filled.ShowChart, contentDescription = null) },
-                    label = { Text("Sinyal") },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = GoldPrimary,
-                        selectedTextColor = GoldPrimary,
-                        indicatorColor = Color(0x33D4AF62)
-                    )
-                )
-                NavigationBarItem(
-                    selected = tab == PremiumTab.PROFILE,
-                    onClick = { tab = PremiumTab.PROFILE },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                    label = { Text("Profil") },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = GoldPrimary,
-                        selectedTextColor = GoldPrimary,
-                        indicatorColor = Color(0x33D4AF62)
-                    )
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(Modifier.fillMaxSize().padding(innerPadding)) {
-            AdaptiveAppFrame {
-                when (tab) {
-                PremiumTab.SIGNALS -> {
-                    val activeSignals = remember(signals) {
-                        signals.filter { it.status == SignalStatus.ACTIVE }
-                    }
-                    val historySignals = remember(signals) {
-                        signals.filter { it.status != SignalStatus.ACTIVE }
-                    }
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        item { ActiveSignalsSection(signals = activeSignals) }
-                        item { PremiumExpiryBanner(expiryLabel) }
-                        item { SubscriptionBanner(user, packages, onBuy = { showPackagesSheet = true }, premium = true) }
-                        if (orders.any { it.status.name == "PENDING" }) item { PendingRenewalBanner() }
-                        item { PerformanceSummaryCard(signals = signals) }
-                        item { HistorySignalsSection(signals = historySignals) }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                user.email,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                if (user.effectiveRole == com.sevengold.signalapp.data.model.Role.PREMIUM) "Premium" else "Pengguna",
+                                color = GoldPrimary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        IconButton(onClick = onLogout) {
+                            Icon(Icons.Filled.Logout, contentDescription = "Keluar")
+                        }
                     }
-                }
-                    PremiumTab.PROFILE -> ProfileScreen(user = user, onLogout = onLogout)
                 }
             }
         }
@@ -199,7 +229,6 @@ fun PremiumSignalScreen(
             onDismiss = { showPackagesSheet = false }
         )
     }
-    })
 }
 @Composable
 private fun ActiveSignalsSection(signals: List<Signal>) {
