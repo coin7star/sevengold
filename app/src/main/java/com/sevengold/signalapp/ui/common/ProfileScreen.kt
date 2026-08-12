@@ -15,6 +15,10 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
@@ -228,6 +232,7 @@ private fun ReferralCodeRow(label: String, value: String, onCopy: () -> Unit) {
 private fun TelegramNotificationCard(user: AppUser) {
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val repository = remember { UserRepository() }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -288,10 +293,28 @@ private fun TelegramNotificationCard(user: AppUser) {
                     }
                 }
                 Text(
-                    "Buka bot Telegram SevenGold lalu kirim: /start ${user.telegramConnectionCode}",
+                    "Kode ini berlaku 10 menit. Tekan tombol di bawah untuk membuka bot Telegram dan menghubungkan akun secara otomatis.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = {
+                        val code = user.telegramConnectionCode
+                        val deepLink = "tg://resolve?domain=signalalertsniper_bot&start=${Uri.encode("SG-$code")}"
+                        val webLink = "https://t.me/signalalertsniper_bot?start=${Uri.encode("SG-$code")}"
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(deepLink)))
+                        } catch (_: ActivityNotFoundException) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webLink)))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Send, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Buka Telegram & Hubungkan")
+                }
                 Spacer(Modifier.height(10.dp))
             }
 

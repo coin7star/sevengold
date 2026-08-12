@@ -1183,3 +1183,14 @@ Karena Worker sekarang juga membaca/memperbarui dokumen Firestore untuk koneksi 
 ### Catatan skala
 
 Implementasi V24.8 menggunakan query Firestore untuk mencari Premium yang terhubung setiap kali event push terjadi. Ini sederhana dan cocok untuk tahap awal. Jika jumlah Premium sudah besar, sebaiknya dipindahkan ke koleksi subscription Telegram khusus agar pengiriman tidak perlu memindai daftar user Premium.
+
+
+## V24.8.2 — Telegram Connect UX
+
+Perbaikan koneksi Telegram Premium:
+- Kode koneksi sekarang menggunakan format **`SG-XXXXXX`** agar mudah dikenali.
+- Tombol **Buka Telegram & Hubungkan** langsung membuka bot resmi SevenGold: **@signalalertsniper_bot**.
+- Jika aplikasi Telegram tersedia, Android mencoba deep link Telegram terlebih dahulu; jika tidak tersedia, otomatis memakai halaman `t.me`.
+- Deep link membawa kode `SG-XXXXXX` melalui parameter `/start`, sehingga user tidak perlu mengetik kode manual.
+- Worker tetap menerima format `SG-XXXXXX` dan juga menormalisasi kode lama `XXXXXX` menjadi `SG-XXXXXX` untuk kompatibilitas.
+- Token bot tetap hanya disimpan sebagai Cloudflare Secret; tidak pernah ditanam di APK.

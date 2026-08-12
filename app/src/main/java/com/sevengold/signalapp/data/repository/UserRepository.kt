@@ -152,6 +152,7 @@ class UserRepository(
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         val random = java.security.SecureRandom()
         val code = buildString {
+            append("SG-")
             repeat(6) { append(chars[random.nextInt(chars.length)]) }
         }
         val expiresAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)

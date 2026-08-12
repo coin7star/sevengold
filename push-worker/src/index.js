@@ -288,7 +288,8 @@ async function handleTelegramWebhook(request, env) {
   const text = String(message?.text || "").trim();
   if (!chatId || !text.startsWith("/start")) return json({ ok: true, ignored: true });
 
-  const code = text.split(/\s+/)[1]?.trim().toUpperCase() || "";
+  const rawCode = text.split(/\s+/)[1]?.trim().toUpperCase() || "";
+  const code = rawCode.startsWith("SG-") ? rawCode : (rawCode ? `SG-${rawCode}` : "");
   if (!code) {
     await sendTelegram(env, chatId, "🔗 Hubungkan SevenGold", "Kirim /start KODE yang tampil di aplikasi SevenGold.");
     return json({ ok: true });
