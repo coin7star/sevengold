@@ -334,41 +334,26 @@ fun SignalCard(signal: Signal) {
     val df = remember { SimpleDateFormat("dd MMM, HH:mm", Locale("id", "ID")) }
     val isBuy = signal.type == SignalType.BUY
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surface)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Box(
-            Modifier
-                .width(5.dp)
-                .fillMaxHeight()
-                .background(if (isBuy) EmeraldAccent else Color(0xFFE5657A))
-        )
-        Column(Modifier.padding(16.dp).weight(1f)) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val compact = maxWidth < 330.dp
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val compact = maxWidth < 330.dp
+            val padding = if (compact) 12.dp else 16.dp
+
+            Column(Modifier.padding(padding)) {
+                // Header dibuat adaptif: pada layar sempit status turun ke baris kedua,
+                // sehingga BUY/XAUUSD tidak pernah bertabrakan dengan badge status.
+                if (compact) {
                     Row(
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isBuy) Color(0x263FBF8F) else Color(0x26E5657A))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            signal.type.name,
-                            color = if (isBuy) EmeraldAccent else Color(0xFFE5657A),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                        Spacer(Modifier.width(6.dp))
+                        SignalTypeBadge(isBuy = isBuy, label = signal.type.name)
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             signal.pair,
                             modifier = Modifier.weight(1f),
@@ -378,41 +363,99 @@ fun SignalCard(signal: Signal) {
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
-                    StatusBadge(status = signal.status, compact = compact)
+                    Spacer(Modifier.height(8.dp))
+                    StatusBadge(status = signal.status, compact = true)
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            Modifier.weight(1f).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SignalTypeBadge(isBuy = isBuy, label = signal.type.name)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                signal.pair,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        StatusBadge(status = signal.status, compact = false)
+                    }
                 }
-                Spacer(Modifier.height(if (compact) 10.dp else 12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    PriceStat("Entry", signal.entry, MaterialTheme.colorScheme.onSurface)
-                    PriceStat("TP", signal.tp, EmeraldAccent)
-                    PriceStat("SL", signal.sl, Color(0xFFE5657A))
-                }
-            }
 
-            if (signal.note.isNotBlank()) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(if (compact) 12.dp else 14.dp))
+
+                // Tiga kolom selalu mendapat lebar yang sama. Ini mencegah harga panjang
+                // mendorong kolom lain keluar layar pada density/DPI yang berbeda.
+                Row(Modifier.fillMaxWidth()) {
+                    PriceStat("Entry", signal.entry, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                    PriceStat("SL", signal.sl, Color(0xFFE5657A), Modifier.weight(1f))
+                    PriceStat("TP", signal.tp, EmeraldAccent, Modifier.weight(1f))
+                }
+
+                if (signal.note.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        signal.note,
+                        maxLines = if (compact) 2 else 3,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    signal.note,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
+                    df.format(Date(signal.createdAt)),
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                df.format(Date(signal.createdAt)),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
 
 @Composable
-private fun PriceStat(label: String, value: Double, color: Color) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(String.format(Locale.US, "%.2f", value), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+private fun SignalTypeBadge(isBuy: Boolean, label: String) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isBuy) Color(0x263FBF8F) else Color(0x26E5657A))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            label,
+            color = if (isBuy) EmeraldAccent else Color(0xFFE5657A),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun PriceStat(label: String, value: Double, color: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(end = 6.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Text(
+            String.format(Locale.US, "%.2f", value),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

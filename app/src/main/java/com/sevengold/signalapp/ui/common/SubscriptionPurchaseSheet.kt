@@ -63,18 +63,24 @@ fun SubscriptionBanner(
                 )
                 .take(2)
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                previewPackages.forEach { pkg ->
-                    PackageMini(
-                        pkg = pkg,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (previewPackages.size == 1) {
-                    Spacer(Modifier.weight(1f))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val compact = maxWidth < 360.dp
+                if (compact) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        previewPackages.forEach { pkg ->
+                            PackageMini(pkg = pkg, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        previewPackages.forEach { pkg ->
+                            PackageMini(pkg = pkg, modifier = Modifier.weight(1f))
+                        }
+                        if (previewPackages.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
 
@@ -110,12 +116,17 @@ private fun PackageMini(
             ) {
                 Text(
                     pkg.name,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelLarge
                 )
                 if (pkg.label.isNotBlank()) {
                     Text(
                         pkg.label,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
