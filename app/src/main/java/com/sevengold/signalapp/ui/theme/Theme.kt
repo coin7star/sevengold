@@ -53,15 +53,18 @@ private val LightColors = lightColorScheme(
     background = Color(0xFFFAF8F4),
     surface = Color.White,
     surfaceVariant = Color(0xFFF1ECE0),
+    onSurface = Color(0xFF1C1B19),
+    onSurfaceVariant = Color(0xFF68645D),
+    outline = Color(0xFFD0C8B9),
     error = Color(0xFFB3273D)
 )
 
 val SignalAppShapes = Shapes(
     extraSmall = RoundedCornerShape(10.dp),
     small = RoundedCornerShape(14.dp),
-    medium = RoundedCornerShape(22.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(36.dp)
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(30.dp)
 )
 
 private val SignalAppTypography = Typography(

@@ -1,3 +1,5 @@
+# SevenGold Signal App — V25.0 Professional UX
+
 
 ## V24.8.3 — Admin User Telegram Visibility
 
@@ -989,7 +991,7 @@ Fallback di APK membuat build tidak gagal hanya karena secret ini belum dibuat, 
 - Existing admin features and data structures are preserved.
 
 
-## V24.9 — Admin Drawer Fix
+## V25.0 — Admin Drawer Fix
 
 - Admin side menu now uses a custom full-screen Surface instead of the Material3 ModalDrawerSheet width constraint.
 - Prevents the admin drawer from appearing clipped/narrow on phone layouts.
@@ -1308,7 +1310,7 @@ Telegram connection remains managed by the Cloudflare Worker webhook:
 `/telegram/webhook`.
 
 
-## V24.9 — Notification Center + Signal Detail
+## V25.0 — Notification Center + Signal Detail
 
 - Added an in-app Notification Center for signal updates.
 - Stores the latest 100 received FCM signal notifications locally on the device.
@@ -1324,3 +1326,14 @@ Telegram connection remains managed by the Cloudflare Worker webhook:
 3. Open **Notifikasi** to see the event.
 4. Tap a notification to open its details.
 5. Trigger TP / BE / SL / Cancel and verify each event appears as a separate notification.
+
+
+## V25.0 Professional UX Polish
+
+- Responsive content frame for phone, tablet, foldable, landscape, and split-screen widths.
+- Refined spacing, cards, typography, notification states, empty states, and unread indicators.
+- Notification Center now supports compact unread filtering and clearer signal detail presentation.
+- Preserves existing FCM, Telegram, Premium, Admin, Google Login, signal history, and notification flows.
+
+### Verification
+Run the repository's GitHub Actions Android build (`assembleDebug`) after pushing. This repository may not include a Gradle wrapper, so CI is the authoritative Android build check.

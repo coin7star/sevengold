@@ -1,7 +1,9 @@
 package com.sevengold.signalapp.ui.common
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,8 +16,8 @@ import androidx.compose.ui.unit.dp
 /**
  * Responsive content frame for phones, foldables and tablets.
  *
- * Breakpoints use available window width instead of device names, so the UI
- * also adapts correctly to split-screen and landscape mode.
+ * Uses the available window width so split-screen, landscape and tablets
+ * receive an appropriate content density without relying on device models.
  */
 @Composable
 fun AdaptiveAppFrame(
@@ -26,23 +28,46 @@ fun AdaptiveAppFrame(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
     ) {
+        val isTablet = maxWidth >= 600.dp
+        val isWide = maxWidth >= 840.dp
         val horizontalPadding = when {
-            maxWidth >= 840.dp -> 32.dp
-            maxWidth >= 600.dp -> 24.dp
+            isWide -> 32.dp
+            isTablet -> 24.dp
             else -> 16.dp
         }
-
-        val contentMaxWidth = when {
-            maxWidth >= 840.dp -> 1200.dp
-            maxWidth >= 600.dp -> 960.dp
-            else -> maxWidth
+        val maxContentWidth = when {
+            isWide -> 1200.dp
+            isTablet -> 960.dp
+            else -> 680.dp
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = contentMaxWidth)
+                .widthIn(max = maxContentWidth)
                 .padding(horizontal = horizontalPadding)
+        ) {
+            content()
+        }
+    }
+}
+
+/**
+ * A lightweight responsive column used by screens that need consistent
+ * vertical rhythm while remaining comfortable on tablets.
+ */
+@Composable
+fun AdaptiveContentColumn(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
+    ) {
+        val spacing = if (maxWidth >= 600.dp) 16.dp else 12.dp
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
             content()
         }
