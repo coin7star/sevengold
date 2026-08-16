@@ -777,23 +777,43 @@ private fun AdminUserAnalyticsTab(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        growthData.forEach { (label, count) ->
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(label, modifier = Modifier.width(if (growthDays == 7) 42.dp else 48.dp), style = MaterialTheme.typography.labelSmall)
-                                LinearProgressIndicator(
-                                    progress = { count.toFloat() / maxGrowth.toFloat() },
-                                    modifier = Modifier.weight(1f).height(10.dp),
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                Text(
-                                    count.toString(),
-                                    modifier = Modifier.width(32.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        // 30D dibuat scroll di dalam card agar halaman admin tidak memanjang.
+                        // 7D tetap compact dan tampil penuh.
+                        val growthListModifier = if (growthDays == 30) {
+                            Modifier
+                                .fillMaxWidth()
+                                .height(270.dp)
+                                .verticalScroll(rememberScrollState())
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+
+                        Column(
+                            modifier = growthListModifier,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            growthData.forEach { (label, count) ->
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        label,
+                                        modifier = Modifier.width(if (growthDays == 7) 42.dp else 48.dp),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    LinearProgressIndicator(
+                                        progress = { count.toFloat() / maxGrowth.toFloat() },
+                                        modifier = Modifier.weight(1f).height(10.dp),
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    Text(
+                                        count.toString(),
+                                        modifier = Modifier.width(32.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
