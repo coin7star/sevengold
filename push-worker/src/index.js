@@ -202,7 +202,10 @@ async function firestoreRunRangeQuery(env, projectId, accessToken, minMillis, ma
       },
     }),
   });
-  if (!response.ok) throw new Error(`Firestore range query failed: HTTP ${response.status}`);
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Firestore range query failed: HTTP ${response.status} ${body.slice(0, 300)}`);
+  }
   return await response.json();
 }
 
