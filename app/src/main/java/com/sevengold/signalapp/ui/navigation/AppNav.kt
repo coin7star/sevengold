@@ -111,7 +111,9 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
                             )
                             Spacer(Modifier.height(16.dp))
                             Button(
-                                onClick = { uid.let { sessionViewModel.startListening(it) } },
+                                onClick = {
+                                    sessionViewModel.currentUid()?.let { sessionViewModel.startListening(it) }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) { Text("Coba Lagi") }
                             Spacer(Modifier.height(8.dp))
