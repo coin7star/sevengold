@@ -30,15 +30,17 @@ fun AdaptiveAppFrame(
     ) {
         val isTablet = maxWidth >= 600.dp
         val isWide = maxWidth >= 840.dp
+        // Keep phone content wider while still respecting safe screen edges.
+        // The screen itself may add small inner padding for cards/lists.
         val horizontalPadding = when {
-            isWide -> 32.dp
-            isTablet -> 24.dp
-            else -> 16.dp
+            isWide -> 24.dp
+            isTablet -> 16.dp
+            else -> 8.dp
         }
         val maxContentWidth = when {
-            isWide -> 1200.dp
-            isTablet -> 960.dp
-            else -> 680.dp
+            isWide -> 1400.dp
+            isTablet -> 1100.dp
+            else -> 760.dp
         }
 
         Box(
