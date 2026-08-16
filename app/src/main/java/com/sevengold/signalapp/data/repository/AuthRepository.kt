@@ -26,6 +26,12 @@ class AuthRepository(
 ) {
     val currentUid: String? get() = auth.currentUser?.uid
 
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
+        val normalizedEmail = email.trim()
+        require(normalizedEmail.isNotBlank()) { "Email wajib diisi" }
+        auth.sendPasswordResetEmail(normalizedEmail).await()
+    }
+
     suspend fun register(email: String, password: String, referralCodeInput: String = ""): Result<RegistrationResult> = runCatching {
         val normalizedReferral = referralCodeInput.trim().uppercase()
 

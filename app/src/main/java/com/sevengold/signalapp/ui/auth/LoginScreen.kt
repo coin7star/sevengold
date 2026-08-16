@@ -44,11 +44,19 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(state.success) {
         if (state.success) onLoginSuccess()
+    }
+
+    LaunchedEffect(state.resetPasswordSuccess) {
+        if (state.resetPasswordSuccess) {
+            showResetDialog = true
+        }
     }
 
     // Satu-satunya launcher Google Login: selalu tampilkan pemilih akun Google.
@@ -130,6 +138,21 @@ fun LoginScreen(
                     isPassword = true
                 )
 
+                TextButton(
+                    onClick = {
+                        resetEmail = email
+                        showResetDialog = true
+                        viewModel.clearError()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Lupa password?",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
                 if (state.error != null) {
                     Spacer(Modifier.height(14.dp))
                     Text(
@@ -157,6 +180,78 @@ fun LoginScreen(
                     Text("Belum punya akun? Daftar", color = MaterialTheme.colorScheme.primary)
                 }
             }
+        }
+
+        if (showResetDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!state.loading) showResetDialog = false
+                },
+                title = {
+                    Text("Reset Password")
+                },
+                text = {
+                    Column {
+                        if (state.resetPasswordSuccess) {
+                            Text(
+                                "✅ Link reset password sudah dikirim ke email kamu. " +
+                                    "Cek inbox atau folder spam, lalu ikuti link untuk membuat password baru.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        } else {
+                            Text(
+                                "Masukkan email akun kamu. Kami akan mengirim link untuk membuat password baru.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            PremiumTextField(
+                                value = resetEmail,
+                                onValueChange = { resetEmail = it },
+                                label = "Email",
+                                leadingIcon = Icons.Filled.Mail,
+                                keyboardType = KeyboardType.Email
+                            )
+                            if (state.error != null) {
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    state.error ?: "",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = !state.loading && !state.resetPasswordSuccess && resetEmail.isNotBlank(),
+                        onClick = { viewModel.resetPassword(resetEmail) }
+                    ) {
+                        if (state.loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else if (state.resetPasswordSuccess) {
+                            Text("Terkirim")
+                        } else {
+                            Text("Kirim Link")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        enabled = !state.loading,
+                        onClick = {
+                            showResetDialog = false
+                            viewModel.clearResetPasswordSuccess()
+                            viewModel.clearError()
+                        }
+                    ) {
+                        Text(if (state.resetPasswordSuccess) "Selesai" else "Batal")
+                    }
+                }
+            )
         }
     }
 }

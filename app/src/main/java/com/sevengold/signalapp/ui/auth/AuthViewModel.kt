@@ -12,6 +12,7 @@ data class AuthUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
+    val resetPasswordSuccess: Boolean = false,
     val welcomeVoucherCode: String? = null,
     val welcomeVoucherPercent: Int = 0,
     // Meminta UI membuka pemilih akun Google Play Services.
@@ -95,6 +96,27 @@ class AuthViewModel(
                 onFailure = { AuthUiState(error = it.message ?: "Registrasi gagal") }
             )
         }
+    }
+
+    fun resetPassword(email: String) {
+        if (email.isBlank()) {
+            _state.value = _state.value.copy(error = "Masukkan email akun terlebih dahulu")
+            return
+        }
+        _state.value = AuthUiState(loading = true)
+        viewModelScope.launch {
+            val result = repo.sendPasswordResetEmail(email.trim())
+            _state.value = result.fold(
+                onSuccess = { AuthUiState(resetPasswordSuccess = true) },
+                onFailure = {
+                    AuthUiState(error = it.message ?: "Gagal mengirim link reset password")
+                }
+            )
+        }
+    }
+
+    fun clearResetPasswordSuccess() {
+        _state.value = _state.value.copy(resetPasswordSuccess = false)
     }
 
     fun clearError() {
