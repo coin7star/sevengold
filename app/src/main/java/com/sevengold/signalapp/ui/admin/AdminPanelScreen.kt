@@ -59,7 +59,7 @@ import com.sevengold.signalapp.ui.theme.GoldPrimary
 import java.util.Locale
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), ANALYTICS("Analytics"), TELEGRAM("Telegram"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), ANALYTICS("Analytics"), USER_ANALYTICS("User Analytics"), TELEGRAM("Telegram"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
 }
 
 @Composable
@@ -97,6 +97,7 @@ fun AdminPanelScreen(
                                 AdminTab.PUBLISH -> "Terbitkan Sinyal"
                                 AdminTab.SIGNALS -> "Kelola Sinyal"
                                 AdminTab.ANALYTICS -> "Signal Analytics"
+                                AdminTab.USER_ANALYTICS -> "User Analytics"
                                 AdminTab.TELEGRAM -> "Telegram Control"
                                 AdminTab.CODES -> "Kode / Voucher"
                                 AdminTab.PACKAGES -> "Paket Langganan"
@@ -133,6 +134,7 @@ fun AdminPanelScreen(
                     AdminTab.PUBLISH -> PublishSignalTab(adminUid)
                     AdminTab.SIGNALS -> ManageSignalsTab()
                     AdminTab.ANALYTICS -> AdminSignalAnalyticsTab()
+                    AdminTab.USER_ANALYTICS -> AdminUserAnalyticsTab()
                     AdminTab.TELEGRAM -> AdminTelegramTab()
                     AdminTab.CODES -> ManageCodesTab(adminUid)
                     AdminTab.PACKAGES -> SubscriptionPackagesTab()
@@ -211,6 +213,15 @@ fun AdminPanelScreen(
                         icon = Icons.Filled.ShowChart,
                         onClick = {
                             tab = AdminTab.ANALYTICS
+                            drawerOpen = false
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.USER_ANALYTICS,
+                        label = "User Analytics",
+                        icon = Icons.Filled.Person,
+                        onClick = {
+                            tab = AdminTab.USER_ANALYTICS
                             drawerOpen = false
                         }
                     )
@@ -651,6 +662,83 @@ private fun TelegramStatCard(label: String, value: Int, modifier: Modifier = Mod
         Column(Modifier.padding(12.dp)) {
             Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = GoldPrimary)
             Text(label, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
+private fun AdminUserAnalyticsTab(
+    userVm: UserManagementViewModel = viewModel()
+) {
+    val users by userVm.users.collectAsState()
+    val stats = remember(users) { calculateUserRegistrationStats(users) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("User Analytics", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                    Text(
+                        "Pantau pertumbuhan pendaftaran user dari waktu ke waktu.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Total User", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        users.size.toString(),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GoldPrimary
+                    )
+                    Text(
+                        "Jumlah seluruh akun yang terbaca dari collection users.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnalyticsMetricCard("Hari Ini", stats.today.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("7 Hari", stats.last7Days.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("30 Hari", stats.last30Days.toString(), Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ringkasan Pertumbuhan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    AnalyticsRow("Hari ini", stats.today.toString())
+                    AnalyticsRow("7 hari terakhir", stats.last7Days.toString())
+                    AnalyticsRow("30 hari terakhir", stats.last30Days.toString())
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Perhitungan mengikuti waktu lokal perangkat admin dan menggunakan field createdAt.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
