@@ -52,6 +52,8 @@ import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.rupiah
+import com.sevengold.signalapp.ui.common.StatsPeriod
+import com.sevengold.signalapp.ui.common.toPerformanceStats
 import com.sevengold.signalapp.ui.theme.DangerRed
 import com.sevengold.signalapp.ui.theme.GoldPrimary
 import java.util.Locale
@@ -656,7 +658,7 @@ private fun TelegramStatCard(label: String, value: Int, modifier: Modifier = Mod
 @Composable
 private fun AdminSignalAnalyticsTab(vm: SignalListViewModel = viewModel()) {
     val signals by vm.signals.collectAsState()
-    var period by remember { mutableStateOf(com.sevengold.signalapp.ui.common.StatsPeriod.DAILY) }
+    var period by remember { mutableStateOf(StatsPeriod.DAILY) }
     val stats = remember(signals, period) {
         signals.toPerformanceStats(period)
     }
