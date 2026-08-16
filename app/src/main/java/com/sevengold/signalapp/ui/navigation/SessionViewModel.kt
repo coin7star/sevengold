@@ -41,6 +41,7 @@ class SessionViewModel(
         // Kalau sebelumnya sudah ada listener nyala (misal dari akun lain), matikan dulu.
         listenJob?.cancel()
         _loadFailed.value = false
+        pushCurrentFcmToken(uid)
         listenJob = viewModelScope.launch {
             userRepository.observeUser(uid)
                 .catch { e ->
@@ -61,6 +62,22 @@ class SessionViewModel(
     }
 
     fun currentUid(): String? = auth.currentUser?.uid
+
+    /**
+     * Backfill token FCM device saat ini ke Firestore tiap kali sesi mulai (login/buka app),
+     * bukan cuma mengandalkan onNewToken di SignalNotificationService (yang cuma kepanggil
+     * kalau tokennya BERUBAH). Ini supaya user yang sudah login dari sebelum fitur reminder
+     * H-1 ada tetap kepasang token-nya tanpa harus reinstall/logout dulu.
+     */
+    private fun pushCurrentFcmToken(uid: String) {
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                viewModelScope.launch {
+                    userRepository.updateFcmToken(uid, token)
+                        .onFailure { Log.e("SessionViewModel", "Gagal simpan FCM token", it) }
+                }
+            }
+    }
 
 
     /**

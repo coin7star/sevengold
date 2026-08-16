@@ -171,6 +171,15 @@ class UserRepository(
         ).await()
     }
 
+    /**
+     * Simpan/update token FCM device saat ini ke dokumen user, dipakai Cloud Function
+     * buat kirim push notif langsung ke device (misal reminder H-1 sebelum expiry),
+     * beda dari notif sinyal yang lewat topic broadcast ke semua Premium sekaligus.
+     */
+    suspend fun updateFcmToken(uid: String, token: String): Result<Unit> = runCatching {
+        db.collection("users").document(uid).update("fcmToken", token).await()
+    }
+
     suspend fun disconnectTelegram(uid: String): Result<Unit> = runCatching {
         db.collection("users").document(uid).update(
             mapOf(

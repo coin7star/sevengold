@@ -9,6 +9,7 @@ import com.google.firebase.messaging.RemoteMessage
 import android.util.Log
 import com.sevengold.signalapp.MainActivity
 import com.sevengold.signalapp.R
+import kotlinx.coroutines.launch
 
 /**
  * Nerima pesan FCM yang dikirim Cloud Function tiap ada sinyal baru / status berubah
@@ -68,6 +69,18 @@ class SignalNotificationService : FirebaseMessagingService() {
         NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
     }
 
-    // Tidak perlu handle onNewToken karena kita pakai topic messaging (subscribeToTopic),
-    // bukan kirim ke token device satu-satu.
+    /**
+     * Dipanggil FCM SDK kalau token device berubah (install baru, clear data, dll).
+     * Disimpan ke Firestore supaya Cloud Function bisa kirim push langsung ke device
+     * ini juga (contoh: reminder H-1 sebelum langganan Premium habis) — bukan cuma
+     * lewat topic broadcast yang dipakai buat notif sinyal.
+     */
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            com.sevengold.signalapp.data.repository.UserRepository().updateFcmToken(uid, token)
+                .onFailure { Log.e("PremiumPush", "Gagal simpan FCM token", it) }
+        }
+    }
 }
