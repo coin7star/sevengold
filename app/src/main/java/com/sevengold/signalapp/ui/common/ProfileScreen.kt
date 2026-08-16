@@ -10,10 +10,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import android.content.ActivityNotFoundException
@@ -34,6 +37,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.model.Role
 import com.sevengold.signalapp.data.repository.UserRepository
@@ -56,113 +60,162 @@ fun ProfileScreen(
     onLogout: () -> Unit
 ) {
     val df = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID")) }
+    val authUser = remember { FirebaseAuth.getInstance().currentUser }
+    val clipboard = LocalClipboardManager.current
+    val displayName = authUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: user.email.substringBefore("@").replaceFirstChar { it.uppercase() }
+    val initial = displayName.firstOrNull()?.uppercaseChar()?.toString()
+        ?: user.email.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    val expiry = user.premiumExpiryMillis
+    val remainingMillis = expiry?.minus(System.currentTimeMillis()) ?: 0L
+    val remainingDays = if (remainingMillis > 0L) ((remainingMillis + 86_399_999L) / 86_400_000L) else 0L
+    val provider = authUser?.providerData
+        ?.firstOrNull { it.providerId != "firebase" }
+        ?.providerId
+        ?.let { if (it.contains("google")) "Google" else "Email & Password" }
+        ?: "Email & Password"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(16.dp))
-
-        Box(
-            modifier = Modifier
-                .size(88.dp)
-                .shadow(16.dp, CircleShape, ambientColor = Color(0xFFD4AF62), spotColor = Color(0xFFD4AF62))
-                .clip(CircleShape)
-                .background(SignalGradients.avatarRing),
-            contentAlignment = Alignment.Center
+        // Hero profile card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.background),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = user.email.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = GoldLight
-                )
+                Box(
+                    modifier = Modifier
+                        .size(92.dp)
+                        .shadow(16.dp, CircleShape, ambientColor = Color(0xFFD4AF62), spotColor = Color(0xFFD4AF62))
+                        .clip(CircleShape)
+                        .background(SignalGradients.avatarRing),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier.size(84.dp).clip(CircleShape).background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(initial, style = MaterialTheme.typography.headlineMedium, color = GoldLight, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(3.dp))
+                Text(user.email.ifBlank { "(tanpa email)" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(10.dp))
+                ProfileRoleBadge(user.effectiveRole)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = user.email.ifBlank { "(tanpa email)" },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-        ProfileRoleBadge(user.effectiveRole)
+        Spacer(Modifier.height(14.dp))
 
-        Spacer(Modifier.height(28.dp))
-
-        InfoCard {
-            ProfileInfoRow("Peran aktif", roleLabel(user.effectiveRole))
-
-            if (user.effectiveRole == Role.PREMIUM) {
-                Spacer(Modifier.height(12.dp))
-                val expiry = user.premiumExpiryMillis?.let { df.format(Date(it)) } ?: "-"
-                ProfileInfoRow("Premium berlaku sampai", expiry)
+        // Premium status becomes the visual focus for Premium users.
+        if (user.effectiveRole == Role.PREMIUM) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0x1AD4AF62))
+            ) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = GoldLight)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("PREMIUM AKTIF", style = MaterialTheme.typography.labelLarge, color = GoldLight, fontWeight = FontWeight.Bold)
+                            Text("Sisa sekitar $remainingDays hari", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { (remainingDays.coerceAtMost(30L) / 30f).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(8.dp))
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Berlaku sampai ${expiry?.let { df.format(Date(it)) } ?: "-"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-
-            if (user.role == Role.PREMIUM && user.effectiveRole == Role.USER) {
-                Spacer(Modifier.height(12.dp))
-                ProfileInfoRow("Status", "Masa Premium telah berakhir")
-            }
-
-            Spacer(Modifier.height(12.dp))
-            ProfileInfoRow(
-                "Bergabung sejak",
-                if (user.createdAt > 0) df.format(Date(user.createdAt)) else "-"
-            )
+            Spacer(Modifier.height(14.dp))
         }
 
-        Spacer(Modifier.height(16.dp))
+        // Account details
+        InfoCard(accentText = true) {
+            Text("ACCOUNT CENTER", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+            Spacer(Modifier.height(10.dp))
+            ProfileInfoRow("Status akun", if (user.effectiveRole == Role.PREMIUM) "Premium aktif" else roleLabel(user.effectiveRole))
+            Spacer(Modifier.height(10.dp))
+            ProfileInfoRow("Login", provider)
+            Spacer(Modifier.height(10.dp))
+            ProfileInfoRow("Bergabung sejak", if (user.createdAt > 0) df.format(Date(user.createdAt)) else "-")
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("User ID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(user.uid, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                IconButton(onClick = { clipboard.setText(AnnotatedString(user.uid)) }) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Salin User ID")
+                }
+            }
+        }
 
+        Spacer(Modifier.height(14.dp))
         ReferralCard(user)
 
-        Spacer(Modifier.height(16.dp))
-
+        Spacer(Modifier.height(14.dp))
         if (user.effectiveRole == Role.PREMIUM) {
             TelegramNotificationCard(user)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
         }
 
-        // Penjelasan singkat per-role, supaya user awam tidak bingung fitur apa yang dia punya.
         InfoCard(accentText = true) {
-            Text("INFORMASI PERAN", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Security, contentDescription = null, tint = GoldLight)
+                Spacer(Modifier.width(8.dp))
+                Text("KEAMANAN AKUN", style = MaterialTheme.typography.labelLarge, color = GoldLight)
+            }
             Spacer(Modifier.height(8.dp))
             Text(
-                roleDescription(user.effectiveRole),
+                "Gunakan password yang kuat dan jangan membagikan kode login kepada siapa pun.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        Spacer(Modifier.height(28.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0x1AE5657A))
-                .padding(vertical = 2.dp)
-        ) {
-            OutlinedButton(
-                onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
-                border = androidx.compose.foundation.BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
-            ) {
-                Text("Keluar dari Akun", fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        InfoCard(accentText = true) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Person, contentDescription = null, tint = GoldLight)
+                Spacer(Modifier.width(8.dp))
+                Text("INFORMASI PERAN", style = MaterialTheme.typography.labelLarge, color = GoldLight)
             }
+            Spacer(Modifier.height(8.dp))
+            Text(roleDescription(user.effectiveRole), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        Spacer(Modifier.height(20.dp))
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
+        ) {
+            Text("Keluar dari Akun", fontWeight = FontWeight.Bold)
+        }
         Spacer(Modifier.height(12.dp))
     }
 }
