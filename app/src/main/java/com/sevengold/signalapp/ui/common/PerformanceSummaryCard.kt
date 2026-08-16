@@ -53,7 +53,7 @@ fun PerformanceSummaryCard(signals: List<Signal>, modifier: Modifier = Modifier)
         }
         Spacer(Modifier.height(14.dp))
 
-        PeriodSelector(selected = period, onSelect = { period = it })
+        PeriodSelectorForAdmin(selected = period, onSelect = { period = it })
         Spacer(Modifier.height(18.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -83,7 +83,7 @@ fun PerformanceSummaryCard(signals: List<Signal>, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun PeriodSelector(selected: StatsPeriod, onSelect: (StatsPeriod) -> Unit) {
+fun PeriodSelectorForAdmin(selected: StatsPeriod, onSelect: (StatsPeriod) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

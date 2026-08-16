@@ -57,7 +57,7 @@ import com.sevengold.signalapp.ui.theme.GoldPrimary
 import java.util.Locale
 
 private enum class AdminTab(val label: String) {
-    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), TELEGRAM("Telegram"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
+    PUBLISH("Terbitkan"), SIGNALS("Sinyal"), ANALYTICS("Analytics"), TELEGRAM("Telegram"), CODES("Kode"), PACKAGES("Paket"), SUBSCRIPTIONS("Pesanan"), USERS("Pengguna"), REFERRAL("Referal"), PROFILE("Profil")
 }
 
 @Composable
@@ -94,6 +94,7 @@ fun AdminPanelScreen(
                             when (tab) {
                                 AdminTab.PUBLISH -> "Terbitkan Sinyal"
                                 AdminTab.SIGNALS -> "Kelola Sinyal"
+                                AdminTab.ANALYTICS -> "Signal Analytics"
                                 AdminTab.TELEGRAM -> "Telegram Control"
                                 AdminTab.CODES -> "Kode / Voucher"
                                 AdminTab.PACKAGES -> "Paket Langganan"
@@ -129,6 +130,7 @@ fun AdminPanelScreen(
                 when (tab) {
                     AdminTab.PUBLISH -> PublishSignalTab(adminUid)
                     AdminTab.SIGNALS -> ManageSignalsTab()
+                    AdminTab.ANALYTICS -> AdminSignalAnalyticsTab()
                     AdminTab.TELEGRAM -> AdminTelegramTab()
                     AdminTab.CODES -> ManageCodesTab(adminUid)
                     AdminTab.PACKAGES -> SubscriptionPackagesTab()
@@ -198,6 +200,15 @@ fun AdminPanelScreen(
                         icon = Icons.Filled.ShowChart,
                         onClick = {
                             tab = AdminTab.SIGNALS
+                            drawerOpen = false
+                        }
+                    )
+                    AdminDrawerItem(
+                        selected = tab == AdminTab.ANALYTICS,
+                        label = "Signal Analytics",
+                        icon = Icons.Filled.ShowChart,
+                        onClick = {
+                            tab = AdminTab.ANALYTICS
                             drawerOpen = false
                         }
                     )
@@ -641,6 +652,136 @@ private fun TelegramStatCard(label: String, value: Int, modifier: Modifier = Mod
         }
     }
 }
+
+@Composable
+private fun AdminSignalAnalyticsTab(vm: SignalListViewModel = viewModel()) {
+    val signals by vm.signals.collectAsState()
+    var period by remember { mutableStateOf(com.sevengold.signalapp.ui.common.StatsPeriod.DAILY) }
+    val stats = remember(signals, period) {
+        signals.toPerformanceStats(period)
+    }
+
+    val active = remember(signals) { signals.count { it.status == SignalStatus.ACTIVE } }
+    val tp = remember(signals) { signals.count { it.status == SignalStatus.TP_HIT } }
+    val sl = remember(signals) { signals.count { it.status == SignalStatus.SL_HIT } }
+    val be = remember(signals) { signals.count { it.status == SignalStatus.BE } }
+    val cancelled = remember(signals) { signals.count { it.status == SignalStatus.CANCELLED } }
+    val buy = remember(signals) { signals.count { it.type == SignalType.BUY } }
+    val sell = remember(signals) { signals.count { it.type == SignalType.SELL } }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text("Signal Analytics", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Pantau performa sinyal dan hasil trading dari panel admin.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    com.sevengold.signalapp.ui.common.PeriodSelectorForAdmin(
+                        selected = period,
+                        onSelect = { period = it }
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnalyticsMetricCard("Win Rate", "${formatAnalytics(stats.winRatePercent)}%", Modifier.weight(1f))
+                AnalyticsMetricCard("Total Pip", "${if (stats.totalPips >= 0) "+" else ""}${formatAnalytics(stats.totalPips)}", Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnalyticsMetricCard("Menang", tp.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("Kalah", sl.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("BE", be.toString(), Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Text("Status Sinyal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnalyticsMetricCard("🟢 Aktif", active.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("❌ Cancel", cancelled.toString(), Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Text("Arah Sinyal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Card(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text("BUY", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(buy.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("SELL", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(sell.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Ringkasan Periode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    AnalyticsRow("Closed", stats.totalSignals.toString())
+                    AnalyticsRow("TP Hit", stats.wins.toString())
+                    AnalyticsRow("SL Hit", stats.losses.toString())
+                    AnalyticsRow("Win Rate", "${formatAnalytics(stats.winRatePercent)}%")
+                    AnalyticsRow("Net Pip", "${if (stats.totalPips >= 0) "+" else ""}${formatAnalytics(stats.totalPips)} pip")
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Catatan: statistik ini menggunakan sinyal yang sedang tersedia di aplikasi. Sinyal yang sudah dihapus dari Firebase tidak ikut dihitung.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsMetricCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = GoldPrimary)
+            Spacer(Modifier.height(3.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun formatAnalytics(value: Double): String = String.format(Locale("id", "ID"), "%.1f", value)
 
 @Composable
 private fun ManageSignalsTab(vm: SignalListViewModel = viewModel()) {
