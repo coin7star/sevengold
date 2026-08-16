@@ -43,6 +43,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sevengold.signalapp.data.model.AppUser
+import com.sevengold.signalapp.data.model.Role
 import com.sevengold.signalapp.data.model.Signal
 import com.sevengold.signalapp.data.model.SignalStatus
 import com.sevengold.signalapp.data.model.SignalType
