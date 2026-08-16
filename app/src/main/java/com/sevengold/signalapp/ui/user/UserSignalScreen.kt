@@ -4,18 +4,20 @@ package com.sevengold.signalapp.ui.user
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -211,6 +213,15 @@ fun UserSignalScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
                     ) {
                         item {
+                            UserDashboardHero(
+                                user = user,
+                                activeCount = activeSignals.size,
+                                onProfile = { tab = UserTab.PROFILE },
+                                onNotifications = { tab = UserTab.NOTIFICATIONS },
+                                onRedeem = { showRedeemSheet = true }
+                            )
+                        }
+                        item {
                             ActiveSignalsSection(
                                 signals = activeSignals,
                                 locked = true
@@ -390,3 +401,165 @@ private fun UpsellCard(onUpgrade: () -> Unit) {
     }
 }
 
+@Composable
+private fun UserDashboardHero(
+    user: AppUser,
+    activeCount: Int,
+    onProfile: () -> Unit,
+    onNotifications: () -> Unit,
+    onRedeem: () -> Unit
+) {
+    val displayName = remember(user.email) {
+        user.email.substringBefore("@")
+            .replace(".", " ")
+            .replace("_", " ")
+            .replace("-", " ")
+            .trim()
+            .ifBlank { "Trader" }
+            .split(" ")
+            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(10.dp, RoundedCornerShape(26.dp), ambientColor = Color.Black.copy(alpha = 0.30f))
+            .clip(RoundedCornerShape(26.dp))
+            .background(SignalGradients.heroCard)
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Selamat datang 👋",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GoldLight
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    displayName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Pantau peluang XAUUSD hari ini dengan lebih cepat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFB8C0D0)
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0x24FFFFFF)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "$activeCount",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GoldLight
+                    )
+                    Text(
+                        "Aktif",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB8C0D0)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DashboardQuickAction(
+                modifier = Modifier.weight(1f),
+                icon = { Icon(Icons.Filled.WorkspacePremium, null) },
+                label = "Premium",
+                onClick = onRedeem
+            )
+            DashboardQuickAction(
+                modifier = Modifier.weight(1f),
+                icon = { Icon(Icons.Filled.Notifications, null) },
+                label = "Notifikasi",
+                onClick = onNotifications
+            )
+            DashboardQuickAction(
+                modifier = Modifier.weight(1f),
+                icon = { Icon(Icons.Filled.Person, null) },
+                label = "Profil",
+                onClick = onProfile
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0x18FFFFFF)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.CardGiftcard,
+                    contentDescription = null,
+                    tint = GoldLight
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (user.referralCode.isNotBlank()) "Referral kamu siap dibagikan" else "Ajak teman & dapatkan bonus",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Text(
+                        if (user.referralCode.isNotBlank()) user.referralCode else "Cek detail di Profil",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB8C0D0)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardQuickAction(
+    modifier: Modifier,
+    icon: @Composable () -> Unit,
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(15.dp),
+        color = Color(0x18FFFFFF)
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 11.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CompositionLocalProvider(LocalContentColor provides GoldLight) {
+                icon()
+            }
+            Spacer(Modifier.height(5.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFD9DEEA)
+            )
+        }
+    }
+}
