@@ -7,7 +7,6 @@
  * Topic hanya berisi device yang sedang Premium aktif.
  */
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore } = require("firebase-admin/firestore");
@@ -330,101 +329,3 @@ exports.onSubscriptionOrderUpdated = onDocumentUpdated("subscriptionOrders/{orde
   });
 });
 
-/**
- * Reminder H-1: jalan otomatis tiap hari, cek user PREMIUM yang masa aktifnya
- * bakal habis dalam 24-48 jam ke depan, lalu kirim push notif + Telegram.
- *
- * Kenapa window 24-48 jam (bukan pas < 24 jam): supaya function yang jalan
- * sekali sehari tetap nangkep semua user, walau expiry-nya jatuh persis di
- * antara dua jadwal run. `premiumExpiryReminderSentForMillis` dipakai buat
- * mastiin satu masa aktif cuma dapat 1 reminder, gak dobel tiap function jalan.
- */
-exports.sendPremiumExpiryReminders = onSchedule(
-  { schedule: "every day 09:00", timeZone: "Asia/Jakarta" },
-  async () => {
-    const db = getFirestore();
-    const now = Date.now();
-    const ONE_DAY = 24 * 60 * 60 * 1000;
-    const windowStart = now + ONE_DAY;
-    const windowEnd = now + 2 * ONE_DAY;
-
-    const snapshot = await db.collection("users")
-      .where("role", "==", "PREMIUM")
-      .where("premiumExpiryMillis", ">=", windowStart)
-      .where("premiumExpiryMillis", "<", windowEnd)
-      .get();
-
-    if (snapshot.empty) {
-      console.log("[ExpiryReminder] Tidak ada user yang expired H-1 hari ini.");
-      return;
-    }
-
-    const botToken = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
-    let sentPush = 0;
-    let sentTelegram = 0;
-
-    const jobs = [];
-    snapshot.forEach((doc) => {
-      const user = doc.data() || {};
-      const expiry = Number(user.premiumExpiryMillis || 0);
-
-      // Sudah pernah dikirim buat masa aktif (expiry) yang sama -> skip.
-      if (Number(user.premiumExpiryReminderSentForMillis || 0) === expiry) return;
-
-      const expiryDate = new Date(expiry).toLocaleDateString("id-ID", {
-        day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta",
-      });
-
-      jobs.push((async () => {
-        const tasks = [];
-
-        const fcmToken = String(user.fcmToken || "").trim();
-        if (fcmToken) {
-          tasks.push(
-            getMessaging().send({
-              token: fcmToken,
-              notification: {
-                title: "⏰ Langganan Premium Segera Berakhir",
-                body: `Langganan kamu berakhir besok, ${expiryDate}. Perpanjang sekarang biar sinyal gak putus.`,
-              },
-              android: {
-                priority: "high",
-                notification: { channelId: "premium_signals", priority: "high", sound: "default" },
-              },
-              data: { event: "EXPIRY_REMINDER" },
-            }).then(() => { sentPush++; }).catch((error) => {
-              console.error(`[ExpiryReminder] FCM gagal untuk ${doc.id}:`, error?.message);
-            })
-          );
-        }
-
-        const chatId = String(user.telegramChatId || "").trim();
-        if (chatId && botToken) {
-          const message = `⏰ *LANGGANAN SEGERA BERAKHIR*
-
-Langganan Premium kamu berakhir besok, ${expiryDate}.
-Perpanjang sekarang biar akses sinyal gak kepotong.
-
-⚡ SevenGold Premium`;
-          tasks.push(
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" }),
-            }).then(() => { sentTelegram++; }).catch((error) => {
-              console.error(`[ExpiryReminder] Telegram gagal untuk ${doc.id}:`, error?.message);
-            })
-          );
-        }
-
-        await Promise.allSettled(tasks);
-        // Tandai sudah dikirim buat expiry ini, supaya run berikutnya (besok) gak kirim ulang
-        // ke user yang sama sebelum dia perpanjang / expiry-nya berubah.
-        await doc.ref.update({ premiumExpiryReminderSentForMillis: expiry });
-      })());
-    });
-
-    await Promise.all(jobs);
-    console.log(`[ExpiryReminder] Selesai. push=${sentPush}, telegram=${sentTelegram}, totalUser=${jobs.length}`);
-  }
-);

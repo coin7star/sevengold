@@ -2,6 +2,10 @@ name = "sevengoldapp"
 main = "src/index.js"
 compatibility_date = "2026-08-11"
 
+# Reminder H-1 langganan Premium, jalan tiap hari jam 02:00 UTC (= 09:00 WIB).
+[triggers]
+crons = ["0 2 * * *"]
+
 # Configure these in Cloudflare Dashboard as Variables/Secrets; do not commit secret values.
 # Required: FIREBASE_PROJECT_ID, ADMIN_UIDS, ADMIN_TELEGRAM_CHAT_IDS
 # Secrets: FIREBASE_SERVICE_ACCOUNT_JSON, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET

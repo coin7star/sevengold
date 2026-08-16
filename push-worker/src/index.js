@@ -158,6 +158,54 @@ async function firestoreRunQuery(env, projectId, accessToken, whereField, whereV
   return await response.json();
 }
 
+/**
+ * Sama seperti firestoreRunQuery tapi buat kombinasi role == PREMIUM DAN
+ * premiumExpiryMillis dalam rentang [minMillis, maxMillis) — dipakai reminder H-1.
+ * Butuh composite index (role ASC, premiumExpiryMillis ASC) di Firestore.
+ */
+async function firestoreRunRangeQuery(env, projectId, accessToken, minMillis, maxMillis) {
+  const response = await fetch(`${firestoreBase(projectId)}:runQuery`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "users" }],
+        where: {
+          compositeFilter: {
+            op: "AND",
+            filters: [
+              {
+                fieldFilter: {
+                  field: { fieldPath: "role" },
+                  op: "EQUAL",
+                  value: firestoreValue("PREMIUM"),
+                },
+              },
+              {
+                fieldFilter: {
+                  field: { fieldPath: "premiumExpiryMillis" },
+                  op: "GREATER_THAN_OR_EQUAL",
+                  value: firestoreValue(minMillis),
+                },
+              },
+              {
+                fieldFilter: {
+                  field: { fieldPath: "premiumExpiryMillis" },
+                  op: "LESS_THAN",
+                  value: firestoreValue(maxMillis),
+                },
+              },
+            ],
+          },
+        },
+        limit: 300,
+      },
+    }),
+  });
+  if (!response.ok) throw new Error(`Firestore range query failed: HTTP ${response.status}`);
+  return await response.json();
+}
+
 async function updateUserTelegram(env, projectId, accessToken, uid, fields) {
   const updateMask = Object.keys(fields).map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`).join("&");
   const response = await fetch(
@@ -373,6 +421,11 @@ async function handleAdminTelegramAction(request, env, claims, payload) {
     return json({ ok: true, premium: stats.premium, connected: stats.connected, ...result });
   }
 
+  if (action === "test_expiry_reminder") {
+    const result = await sendPremiumExpiryReminders(env);
+    return json({ ok: true, ...result });
+  }
+
   return json({ ok: false, error: "Unsupported admin Telegram action" }, 400);
 }
 
@@ -556,6 +609,117 @@ async function sendFcm(env, signal, event) {
   return result;
 }
 
+/**
+ * Kirim FCM ke SATU device (token spesifik), beda dari sendFcm yang broadcast ke
+ * topic premium_signals. Dipakai buat notif personal kayak reminder H-1 expiry.
+ */
+async function sendFcmToToken(env, projectId, accessToken, token, title, body, data = {}) {
+  const response = await fetch(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/messages:send`, {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: { title, body },
+        android: {
+          priority: "HIGH",
+          notification: {
+            channel_id: "premium_signals",
+            sound: "default",
+          },
+        },
+        data,
+      },
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(`FCM token send failed: HTTP ${response.status}`);
+  return result;
+}
+
+/**
+ * Reminder H-1: cek user PREMIUM yang premiumExpiryMillis-nya jatuh 24-48 jam ke
+ * depan dari sekarang, lalu kirim push notif (kalau ada fcmToken) + Telegram
+ * (kalau sudah connect bot). Window 24-48 jam (bukan cuma <24 jam) supaya cron
+ * yang jalan sekali sehari tetap nangkep semua user walau expiry-nya jatuh pas
+ * di antara dua jadwal run. `premiumExpiryReminderSentForMillis` disimpan biar
+ * satu masa aktif cuma dapat 1 reminder, gak dobel tiap cron jalan.
+ */
+async function sendPremiumExpiryReminders(env) {
+  const account = getServiceAccount(env);
+  const accessToken = await getGoogleAccessToken(env, account);
+  const projectId = account.project_id;
+
+  const now = Date.now();
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  const windowStart = now + ONE_DAY;
+  const windowEnd = now + 2 * ONE_DAY;
+
+  const rows = await firestoreRunRangeQuery(env, projectId, accessToken, windowStart, windowEnd);
+  const docs = (rows || []).filter((row) => row.document);
+
+  let sentPush = 0;
+  let sentTelegram = 0;
+  let skipped = 0;
+
+  for (const row of docs) {
+    const uid = row.document.name.split("/").pop();
+    const data = fromFirestoreDoc(row.document);
+    const expiry = Number(data.premiumExpiryMillis || 0);
+
+    if (Number(data.premiumExpiryReminderSentForMillis || 0) === expiry) {
+      skipped++;
+      continue;
+    }
+
+    const expiryDate = new Date(expiry).toLocaleDateString("id-ID", {
+      day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta",
+    });
+
+    const fcmToken = String(data.fcmToken || "").trim();
+    if (fcmToken) {
+      try {
+        await sendFcmToToken(
+          env, projectId, accessToken, fcmToken,
+          "⏰ Langganan Premium Segera Berakhir",
+          `Langganan kamu berakhir besok, ${expiryDate}. Perpanjang sekarang biar sinyal gak putus.`,
+          { event: "EXPIRY_REMINDER" }
+        );
+        sentPush++;
+      } catch (error) {
+        console.error("ExpiryReminder FCM failed", JSON.stringify({ uid, error: error?.message }));
+      }
+    }
+
+    const chatId = String(data.telegramChatId || "").trim();
+    if (chatId) {
+      try {
+        await sendTelegram(
+          env, chatId, "⏰ LANGGANAN SEGERA BERAKHIR",
+          `Langganan Premium kamu berakhir besok, ${expiryDate}.\nPerpanjang sekarang biar akses sinyal gak kepotong.`
+        );
+        sentTelegram++;
+      } catch (error) {
+        console.error("ExpiryReminder Telegram failed", JSON.stringify({ uid, error: error?.message }));
+      }
+    }
+
+    try {
+      await updateUserTelegram(env, projectId, accessToken, uid, {
+        premiumExpiryReminderSentForMillis: expiry,
+      });
+    } catch (error) {
+      console.error("ExpiryReminder mark-sent failed", JSON.stringify({ uid, error: error?.message }));
+    }
+  }
+
+  console.log(JSON.stringify({ ok: true, task: "sendPremiumExpiryReminders", sentPush, sentTelegram, skipped, total: docs.length }));
+  return { sentPush, sentTelegram, skipped, total: docs.length };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -620,5 +784,17 @@ export default {
       console.error("Premium push error", error);
       return json({ ok: false, error: error?.message || "Push failed" }, 500);
     }
+  },
+
+  /**
+   * Dipanggil otomatis oleh Cloudflare Cron Trigger (lihat wrangler.toml).
+   * Ini yang jalanin reminder H-1 tiap hari — gratis, gak butuh Firebase Blaze.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      sendPremiumExpiryReminders(env).catch((error) => {
+        console.error("Scheduled sendPremiumExpiryReminders failed", error);
+      })
+    );
   },
 };
