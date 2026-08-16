@@ -675,7 +675,7 @@ private fun AdminUserAnalyticsTab(
     var growthDays by remember { mutableStateOf(7) }
 
     val premiumCount = remember(users) {
-        users.count { it.role == "PREMIUM" }
+        users.count { it.role == Role.PREMIUM }
     }
     val freeCount = (users.size - premiumCount).coerceAtLeast(0)
     val conversion = if (users.isEmpty()) 0.0 else (premiumCount.toDouble() / users.size.toDouble()) * 100.0
