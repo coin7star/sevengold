@@ -216,6 +216,24 @@ fun ProfileScreen(
         ) {
             Text("Keluar dari Akun", fontWeight = FontWeight.Bold)
         }
+
+        // Tombol khusus ADMIN untuk memaksa crash percobaan, supaya Crashlytics punya
+        // data pertama untuk dikonfirmasi di dashboard. TIDAK muncul untuk user biasa.
+        if (user.effectiveRole == Role.ADMIN) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { throw RuntimeException("Test Crash dari halaman Profil (ADMIN)") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                Text("Test Crash (Crashlytics)", fontWeight = FontWeight.Medium)
+            }
+        }
         Spacer(Modifier.height(12.dp))
     }
 }

@@ -3,6 +3,7 @@
 # Perlu dipertahankan supaya Firestore tetap bisa baca generic type (List<T>, Map<K,V>, dst)
 # dan supaya crash log (nanti kalau Crashlytics dipasang) tetap kebaca jelas.
 -keepattributes Signature,*Annotation*,EnclosingMethod,InnerClasses,SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
 # Data model Firestore: Firestore pakai reflection (constructor kosong + getter/setter/field)
 # buat ubah dokumen jadi objek Kotlin. Kalau nama field/constructor ini di-obfuscate atau

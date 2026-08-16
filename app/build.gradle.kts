@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -19,8 +20,14 @@ android {
         applicationId = "com.sevengold.signalapp"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+
+        // versionCode & versionName otomatis mengikuti nomor run GitHub Actions, supaya
+        // Android menganggap tiap APK hasil build baru sebagai "update" yang valid
+        // (sebelumnya di-hardcode 1/"1.0" terus, jadi APK baru dianggap sama persis
+        // dengan yang lama). Build lokal (tanpa CI) tetap fallback ke 1/"1.0".
+        val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "1.0.$buildNumber"
     }
 
     signingConfigs {
@@ -100,6 +107,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     // Google Sign-In via Android Credential Manager
     implementation("androidx.credentials:credentials:1.3.0")

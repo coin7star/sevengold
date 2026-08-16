@@ -38,6 +38,7 @@ import com.sevengold.signalapp.ui.common.PerformanceSummaryCard
 import com.sevengold.signalapp.ui.common.AdaptiveAppFrame
 import com.sevengold.signalapp.ui.common.CompactSignalHistorySection
 import com.sevengold.signalapp.ui.common.NotificationCenterScreen
+import com.sevengold.signalapp.ui.common.SecureScreen
 import com.sevengold.signalapp.ui.common.ProfileScreen
 import com.sevengold.signalapp.ui.common.SignalListViewModel
 import com.sevengold.signalapp.ui.common.SubscriptionBanner
@@ -60,6 +61,7 @@ fun PremiumSignalScreen(
     vm: SignalListViewModel = viewModel(),
     subscriptionVm: SubscriptionViewModel = viewModel()
 ) {
+    SecureScreen() // Cegah screenshot/screen record konten sinyal premium
     val signals by vm.signals.collectAsState()
     val packages by subscriptionVm.packages.collectAsState()
     val orders by subscriptionVm.orders.collectAsState()
