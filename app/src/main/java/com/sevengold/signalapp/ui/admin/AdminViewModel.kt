@@ -96,6 +96,7 @@ class AdminViewModel(
                     when (action) {
                         "testme" -> "Test notification berhasil dikirim ke Telegram admin."
                         "testsignal" -> "Test broadcast selesai: ${r.sent} terkirim, ${r.failed} gagal."
+                        "test_expiry_reminder" -> "Test reminder H-1 selesai: ${r.sentPush} push & ${r.sentTelegram} Telegram terkirim (${r.skipped} dilewati dari ${r.total} user yang expiry-nya H-1)."
                         else -> "Statistik Telegram diperbarui."
                     }
                 },

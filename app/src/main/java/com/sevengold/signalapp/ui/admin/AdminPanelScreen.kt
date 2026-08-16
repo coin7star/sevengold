@@ -625,6 +625,23 @@ private fun AdminTelegramTab(vm: AdminViewModel = viewModel()) {
             }
         }
 
+        Card(shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Reminder H-1 Expiry", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Jalanin reminder H-1 sekarang juga (biasanya otomatis tiap hari jam 09:00 WIB). " +
+                        "Cuma ngirim ke user PREMIUM yang expiry-nya jatuh 24-48 jam dari sekarang & belum pernah dapat reminder buat masa aktif itu.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = { vm.telegramAction("test_expiry_reminder") },
+                    enabled = !loading,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("⏰ Test Reminder H-1") }
+            }
+        }
+
         if (message != null) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Text(message.orEmpty(), Modifier.padding(14.dp))
@@ -637,6 +654,18 @@ private fun AdminTelegramTab(vm: AdminViewModel = viewModel()) {
                     Text("Hasil Pengujian Terakhir", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("Terkirim: ${result.sent}")
                     Text("Gagal: ${result.failed}")
+                }
+            }
+        }
+
+        if (result.total > 0 || result.sentPush > 0 || result.sentTelegram > 0) {
+            Card(shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("Hasil Reminder H-1 Terakhir", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Push terkirim: ${result.sentPush}")
+                    Text("Telegram terkirim: ${result.sentTelegram}")
+                    Text("Dilewati (sudah pernah dikirim): ${result.skipped}")
+                    Text("Total user H-1: ${result.total}")
                 }
             }
         }

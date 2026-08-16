@@ -40,7 +40,11 @@ class AdminTelegramRepository(
                 connected = json.optInt("connected", 0),
                 disconnected = json.optInt("disconnected", 0),
                 sent = json.optInt("sent", 0),
-                failed = json.optInt("failed", 0)
+                failed = json.optInt("failed", 0),
+                sentPush = json.optInt("sentPush", 0),
+                sentTelegram = json.optInt("sentTelegram", 0),
+                skipped = json.optInt("skipped", 0),
+                total = json.optInt("total", 0)
             )
         }
     }
@@ -51,5 +55,11 @@ data class AdminTelegramResult(
     val connected: Int = 0,
     val disconnected: Int = 0,
     val sent: Int = 0,
-    val failed: Int = 0
+    val failed: Int = 0,
+    // Khusus hasil "test_expiry_reminder": beda skema dari testme/testsignal
+    // karena reminder H-1 punya dua channel (push + Telegram) sekaligus.
+    val sentPush: Int = 0,
+    val sentTelegram: Int = 0,
+    val skipped: Int = 0,
+    val total: Int = 0
 )
