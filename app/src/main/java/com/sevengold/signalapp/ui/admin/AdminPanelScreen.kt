@@ -656,9 +656,17 @@ private fun TelegramStatCard(label: String, value: Int, modifier: Modifier = Mod
 }
 
 @Composable
-private fun AdminSignalAnalyticsTab(vm: SignalListViewModel = viewModel()) {
+private fun AdminSignalAnalyticsTab(
+    vm: SignalListViewModel = viewModel(),
+    userVm: UserManagementViewModel = viewModel()
+) {
     val signals by vm.signals.collectAsState()
+    val users by userVm.users.collectAsState()
     var period by remember { mutableStateOf(StatsPeriod.DAILY) }
+
+    val userRegistrationStats = remember(users) {
+        calculateUserRegistrationStats(users)
+    }
     val stats = remember(signals, period) {
         signals.toPerformanceStats(period)
     }
@@ -695,6 +703,61 @@ private fun AdminSignalAnalyticsTab(vm: SignalListViewModel = viewModel()) {
                         selected = period,
                         onSelect = { period = it }
                     )
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "User Analytics",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Jumlah pendaftaran berdasarkan waktu lokal perangkat admin.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            users.size.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GoldPrimary
+                        )
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AnalyticsMetricCard(
+                            "Hari Ini",
+                            userRegistrationStats.today.toString(),
+                            Modifier.weight(1f)
+                        )
+                        AnalyticsMetricCard(
+                            "7 Hari",
+                            userRegistrationStats.last7Days.toString(),
+                            Modifier.weight(1f)
+                        )
+                        AnalyticsMetricCard(
+                            "30 Hari",
+                            userRegistrationStats.last30Days.toString(),
+                            Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -762,6 +825,48 @@ private fun AdminSignalAnalyticsTab(vm: SignalListViewModel = viewModel()) {
             )
         }
     }
+}
+
+private data class UserRegistrationStats(
+    val today: Int,
+    val last7Days: Int,
+    val last30Days: Int
+)
+
+private fun calculateUserRegistrationStats(
+    users: List<com.sevengold.signalapp.data.model.AppUser>
+): UserRegistrationStats {
+    val now = System.currentTimeMillis()
+    val dayMillis = 24L * 60L * 60L * 1000L
+
+    // Calendar-day boundaries follow the admin device's local timezone.
+    val calendar = java.util.Calendar.getInstance()
+    calendar.timeInMillis = now
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+    val startOfToday = calendar.timeInMillis
+    val startOf7Days = now - (7L * dayMillis)
+    val startOf30Days = now - (30L * dayMillis)
+
+    var today = 0
+    var last7Days = 0
+    var last30Days = 0
+
+    users.forEach { user ->
+        val createdAt = user.createdAt
+        if (createdAt >= startOfToday) today++
+        if (createdAt >= startOf7Days) last7Days++
+        if (createdAt >= startOf30Days) last30Days++
+    }
+
+    return UserRegistrationStats(
+        today = today,
+        last7Days = last7Days,
+        last30Days = last30Days
+    )
 }
 
 @Composable
