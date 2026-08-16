@@ -672,6 +672,18 @@ private fun AdminUserAnalyticsTab(
 ) {
     val users by userVm.users.collectAsState()
     val stats = remember(users) { calculateUserRegistrationStats(users) }
+    var growthDays by remember { mutableStateOf(7) }
+
+    val premiumCount = remember(users) {
+        users.count { it.role.equals("PREMIUM", ignoreCase = true) }
+    }
+    val freeCount = (users.size - premiumCount).coerceAtLeast(0)
+    val conversion = if (users.isEmpty()) 0.0 else (premiumCount.toDouble() / users.size.toDouble()) * 100.0
+
+    val growthData = remember(users, growthDays) {
+        calculateDailyUserGrowth(users, growthDays)
+    }
+    val maxGrowth = maxOf(1, growthData.maxOfOrNull { it.second } ?: 0)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -687,26 +699,7 @@ private fun AdminUserAnalyticsTab(
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("User Analytics", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                     Text(
-                        "Pantau pertumbuhan pendaftaran user dari waktu ke waktu.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Total User", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        users.size.toString(),
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = GoldPrimary
-                    )
-                    Text(
-                        "Jumlah seluruh akun yang terbaca dari collection users.",
+                        "Pantau pertumbuhan user, distribusi Premium, dan conversion rate.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -716,16 +709,112 @@ private fun AdminUserAnalyticsTab(
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnalyticsMetricCard("Hari Ini", stats.today.toString(), Modifier.weight(1f))
-                AnalyticsMetricCard("7 Hari", stats.last7Days.toString(), Modifier.weight(1f))
-                AnalyticsMetricCard("30 Hari", stats.last30Days.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("Total User", users.size.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("Premium", premiumCount.toString(), Modifier.weight(1f))
+                AnalyticsMetricCard("Free", freeCount.toString(), Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Premium Conversion", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${formatAnalytics(conversion)}%",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GoldPrimary
+                    )
+                    LinearProgressIndicator(
+                        progress = { (conversion / 100.0).coerceIn(0.0, 1.0).toFloat() },
+                        modifier = Modifier.fillMaxWidth().height(9.dp),
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Text(
+                        "$premiumCount Premium dari ${users.size} total user",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("User Growth", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Pendaftaran per hari berdasarkan createdAt.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterChip(
+                                selected = growthDays == 7,
+                                onClick = { growthDays = 7 },
+                                label = { Text("7D") }
+                            )
+                            FilterChip(
+                                selected = growthDays == 30,
+                                onClick = { growthDays = 30 },
+                                label = { Text("30D") }
+                            )
+                        }
+                    }
+
+                    if (growthData.all { it.second == 0 }) {
+                        Text(
+                            "Belum ada pendaftaran pada periode ini.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        growthData.forEach { (label, count) ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(label, modifier = Modifier.width(if (growthDays == 7) 42.dp else 48.dp), style = MaterialTheme.typography.labelSmall)
+                                LinearProgressIndicator(
+                                    progress = { count.toFloat() / maxGrowth.toFloat() },
+                                    modifier = Modifier.weight(1f).height(10.dp),
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                Text(
+                                    count.toString(),
+                                    modifier = Modifier.width(32.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
         item {
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ringkasan Pertumbuhan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Premium vs Free", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    AnalyticsRow("💎 Premium", premiumCount.toString())
+                    AnalyticsRow("🆓 Free", freeCount.toString())
+                    AnalyticsRow("Conversion", "${formatAnalytics(conversion)}%")
+                }
+            }
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Registration Summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     AnalyticsRow("Hari ini", stats.today.toString())
                     AnalyticsRow("7 hari terakhir", stats.last7Days.toString())
                     AnalyticsRow("30 hari terakhir", stats.last30Days.toString())
@@ -735,11 +824,45 @@ private fun AdminUserAnalyticsTab(
 
         item {
             Text(
-                "Perhitungan mengikuti waktu lokal perangkat admin dan menggunakan field createdAt.",
+                "Perhitungan mengikuti waktu lokal perangkat admin. Premium dihitung dari role = PREMIUM.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun calculateDailyUserGrowth(
+    users: List<com.sevengold.signalapp.data.model.AppUser>,
+    days: Int
+): List<Pair<String, Int>> {
+    val calendar = java.util.Calendar.getInstance()
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+    val start = calendar.clone() as java.util.Calendar
+    start.add(java.util.Calendar.DAY_OF_YEAR, -(days - 1))
+
+    return (0 until days).map { offset ->
+        val day = start.clone() as java.util.Calendar
+        day.add(java.util.Calendar.DAY_OF_YEAR, offset)
+
+        val nextDay = day.clone() as java.util.Calendar
+        nextDay.add(java.util.Calendar.DAY_OF_YEAR, 1)
+
+        val count = users.count {
+            it.createdAt >= day.timeInMillis && it.createdAt < nextDay.timeInMillis
+        }
+
+        val label = if (days == 7) {
+            java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault()).format(day.time)
+        } else {
+            java.text.SimpleDateFormat("dd/MM", java.util.Locale.getDefault()).format(day.time)
+        }
+
+        label to count
     }
 }
 
