@@ -30,11 +30,41 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Signing config untuk build release. Nilainya diambil dari Gradle property /
+        // environment variable (diisi lewat GitHub Secrets di CI, lihat build-apk.yml).
+        // Kalau belum diisi (misal build release manual di laptop tanpa keystore release),
+        // fallback ke debug signing supaya `assembleRelease` tetap bisa jalan untuk testing
+        // lokal — TAPI APK hasilnya TIDAK BOLEH didistribusikan ke user karena tidak
+        // ditandatangani pakai keystore release yang sebenarnya.
+        create("release") {
+            val releaseStoreFile = providers.gradleProperty("SEVENGOLD_RELEASE_KEYSTORE_PATH")
+                .orElse(System.getenv("SEVENGOLD_RELEASE_KEYSTORE_PATH") ?: "")
+                .get()
+            if (releaseStoreFile.isNotBlank()) {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("SEVENGOLD_RELEASE_KEYSTORE_PASSWORD")
+                    .orElse(System.getenv("SEVENGOLD_RELEASE_KEYSTORE_PASSWORD") ?: "")
+                    .get()
+                keyAlias = providers.gradleProperty("SEVENGOLD_RELEASE_KEY_ALIAS")
+                    .orElse(System.getenv("SEVENGOLD_RELEASE_KEY_ALIAS") ?: "")
+                    .get()
+                keyPassword = providers.gradleProperty("SEVENGOLD_RELEASE_KEY_PASSWORD")
+                    .orElse(System.getenv("SEVENGOLD_RELEASE_KEY_PASSWORD") ?: "")
+                    .get()
+            } else {
+                storeFile = rootProject.file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
