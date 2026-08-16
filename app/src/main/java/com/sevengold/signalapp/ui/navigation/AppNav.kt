@@ -1,11 +1,22 @@
 package com.sevengold.signalapp.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +28,7 @@ import com.sevengold.signalapp.ui.auth.LoginScreen
 import com.sevengold.signalapp.ui.auth.RegisterScreen
 import com.sevengold.signalapp.ui.premium.PremiumSignalScreen
 import com.sevengold.signalapp.ui.user.UserSignalScreen
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -71,11 +83,51 @@ fun AppNav(sessionViewModel: SessionViewModel = viewModel()) {
         composable(Routes.HOME) {
             val currentUser = user
             val uid = sessionViewModel.currentUid()
+            val loadFailed by sessionViewModel.loadFailed.collectAsState()
 
             if (uid == null || currentUser == null) {
-                // Masih loading profil dari Firestore
+                // Kalau listener eksplisit gagal (bukan sekadar masih loading), ATAU sudah
+                // nunggu kelamaan tanpa kabar apa-apa (misal koneksi macet), kasih tombol
+                // Coba Lagi & Keluar — supaya user tidak PERNAH nyangkut selamanya di
+                // spinner tanpa jalan keluar (ini yang sebelumnya bikin app kelihatan
+                // "blank"/macet setelah proses ke-kill paksa).
+                var showTimeoutEscape by remember { mutableStateOf(false) }
+                LaunchedEffect(uid) {
+                    showTimeoutEscape = false
+                    delay(8_000)
+                    showTimeoutEscape = true
+                }
+
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    if (loadFailed || showTimeoutEscape) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
+                        ) {
+                            Text(
+                                "Gagal memuat profil akun. Cek koneksi internet kamu.",
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = { uid.let { sessionViewModel.startListening(it) } },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Coba Lagi") }
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    sessionViewModel.logout()
+                                    navController.navigate(Routes.LOGIN) {
+                                        popUpTo(Routes.HOME) { inclusive = true }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Keluar dari Akun") }
+                        }
+                    } else {
+                        CircularProgressIndicator()
+                    }
                 }
                 return@composable
             }

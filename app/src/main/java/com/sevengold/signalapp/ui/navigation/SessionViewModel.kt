@@ -1,8 +1,10 @@
 package com.sevengold.signalapp.ui.navigation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.sevengold.signalapp.data.model.AppUser
 import com.sevengold.signalapp.data.repository.UserRepository
 import kotlinx.coroutines.Job
@@ -24,6 +26,13 @@ class SessionViewModel(
     private val _user = MutableStateFlow<AppUser?>(null)
     val user: StateFlow<AppUser?> = _user
 
+    // true kalau listener gagal konek (bukan sekadar "masih loading"). UI pakai ini untuk
+    // menampilkan tombol Coba Lagi / Keluar, alih-alih spinner tanpa akhir yang bikin user
+    // nyangkut tanpa jalan keluar (misal setelah proses ke-kill paksa / koneksi Firestore lokal
+    // sempat error).
+    private val _loadFailed = MutableStateFlow(false)
+    val loadFailed: StateFlow<Boolean> = _loadFailed
+
     // Job listener Firestore yang sedang aktif, supaya bisa dimatikan manual saat logout.
     private var listenJob: Job? = null
     private var notificationExpiryJob: Job? = null
@@ -31,12 +40,20 @@ class SessionViewModel(
     fun startListening(uid: String) {
         // Kalau sebelumnya sudah ada listener nyala (misal dari akun lain), matikan dulu.
         listenJob?.cancel()
+        _loadFailed.value = false
         listenJob = viewModelScope.launch {
             userRepository.observeUser(uid)
-                // Setelah signOut(), Firestore bakal balikin error permission-denied ke listener lama.
-                // Ditangkap di sini supaya tidak nge-crash app / ganggu proses balik ke halaman Login.
-                .catch { /* listener ditutup karena sesi berakhir (logout) — aman diabaikan */ }
+                .catch { e ->
+                    // Sebelumnya error di sini "ditelan diam-diam" -> _user.value tetap null
+                    // selamanya -> UI nyangkut di spinner tanpa akhir tanpa cara keluar.
+                    // Sekarang: dicatat (Logcat + Crashlytics) dan diberi tahu ke UI supaya
+                    // bisa nawarin tombol Coba Lagi / Keluar.
+                    Log.e("SessionViewModel", "Gagal listen profil user (uid=$uid)", e)
+                    FirebaseCrashlytics.getInstance().recordException(e)
+                    _loadFailed.value = true
+                }
                 .collect { appUser ->
+                    _loadFailed.value = false
                     _user.value = appUser
                     syncPremiumNotificationSubscription(appUser)
                 }
